@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Pocket Wallet</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<style>
+  :root {
+    --bg: #06070d;
+    --page-bg: radial-gradient(circle at top, #1a1c2f 0%, #06070d 60%);
+    --topbar-bg: linear-gradient(to bottom, rgba(6,7,13,0.94), rgba(6,7,13,0.8), transparent);
+    --text: #f5f6ff; --text-soft: #a7a9c2; --muted: #7c7f96;
+    --card-bg: rgba(18,20,36,0.72); --card-border: rgba(255,255,255,0.12);
+    --frost: rgba(255,255,255,0.08); --field-border: rgba(255,255,255,0.14); --track: rgba(255,255,255,0.10);
+    --sheet-bg: rgba(20,22,40,0.96);
+    --accent-1: #7c9eff; --accent-2: #ffc857; --accent-3: #7cf59d; --danger: #ffd0df; --danger-bg: rgba(255,90,130,0.18);
+    --radius-xl: 22px;
+    --shadow-soft: 0 14px 28px rgba(0,0,0,0.45); --tiny-glow: 0 0 6px rgba(124,159,255,0.10);
+    --g1: #7c9eff; --g2: #ff7bc4;
+  }
+  :root.light {
+    --bg: #f4f5fb;
+    --page-bg: radial-gradient(circle at top, #ffffff 0%, #eceefa 70%);
+    --topbar-bg: linear-gradient(to bottom, rgba(244,245,251,0.96), rgba(244,245,251,0.85), transparent);
+    --text: #151728; --text-soft: #5f6278; --muted: #7a7d92;
+    --card-bg: rgba(255,255,255,0.8); --card-border: rgba(0,0,0,0.07);
+    --frost: rgba(0,0,0,0.04); --field-border: rgba(0,0,0,0.12); --track: rgba(0,0,0,0.08);
+    --sheet-bg: rgba(255,255,255,0.97);
+    --danger: #c2325f; --danger-bg: rgba(220,50,100,0.12);
+    --shadow-soft: 0 12px 24px rgba(30,35,80,0.12); --tiny-glow: 0 0 6px rgba(83,109,255,0.12);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+  body { background: var(--page-bg); background-attachment: fixed; display: flex; justify-content: center; transition: background .4s, color .3s; }
+  body.noscroll { overflow: hidden; }
+  .app-shell { width: 100%; max-width: 420px; min-height: 100vh; display: flex; flex-direction: column; padding: 0 14px; position: relative; z-index: 1; }
+  .app { display: flex; flex-direction: column; flex: 1; }
+  main { flex: 1; }
+  .hidden { display: none !important; }
+
+  .bg-orbit { position: fixed; inset: -40px; pointer-events: none; z-index: 0; opacity: .9; overflow: hidden; }
+  .bg-orbit i { position: absolute; border-radius: 50%; filter: blur(50px); opacity: .55; animation: drift 18s ease-in-out infinite alternate; }
+  .bg-orbit i:nth-child(1) { width: 260px; height: 260px; left: -60px; top: -40px; background: rgba(124,159,255,.28); }
+  .bg-orbit i:nth-child(2) { width: 240px; height: 240px; right: -70px; top: 80px; background: rgba(255,120,190,.22); animation-duration: 22s; animation-delay: -6s; }
+  .bg-orbit i:nth-child(3) { width: 300px; height: 300px; left: 20%; bottom: -120px; background: rgba(31,191,109,.20); animation-duration: 26s; animation-delay: -12s; }
+  @keyframes drift { to { transform: translate(40px, -30px) scale(1.12); } }
+
+  /* Loading + welcome */
+  #loadingScreen { position: fixed; inset: 0; background: #06070d; display: flex; align-items: center; justify-content: center; z-index: 90; transition: opacity .45s ease-out; }
+  #loadingScreen.fade { opacity: 0; pointer-events: none; }
+  .loader { text-align: center; color: #fff; font-size: 13px; letter-spacing: .18em; }
+  .loader-dot { margin: 12px auto 0; width: 40px; height: 40px; border-radius: 50%; border: 3px solid rgba(255,255,255,.18); border-top-color: #fff; animation: spin .9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #welcomeScreen { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 20px; z-index: 80; background: rgba(6,7,13,.92); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+  #welcomeScreen.show { display: flex; }
+  #welcomeScreen.show .welcome-card { animation: pop .5s cubic-bezier(.2,1.1,.3,1) both; }
+  .welcome-card { width: 100%; max-width: 340px; padding: 18px; border-radius: var(--radius-xl); background: rgba(18,20,36,.92); border: 1px solid rgba(255,255,255,.12); box-shadow: var(--shadow-soft); color: #f5f6ff; }
+  .welcome-card h2 { margin: 0 0 4px; font-size: 18px; font-weight: 650; }
+  .welcome-card p { margin: 0 0 12px; font-size: 13px; color: #a7a9c2; }
+  .welcome-card select { color: #f5f6ff; }
+
+  /* Top bar */
+  .topbar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 14px 4px 10px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); background: var(--topbar-bg); }
+  .brand-stack { display: flex; flex-direction: column; justify-content: center; line-height: 1.15; min-width: 0; }
+  .topbar-title { font-size: 17px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
+  .topbar-sub { font-size: 11px; color: var(--text-soft); margin-top: 1px; }
+  .topbar-actions { display: flex; gap: 6px; align-items: center; }
+  .topbar-actions select { width: auto; padding: 7px 26px 7px 12px; font-size: 12px; }
+
+  /* Buttons */
+  .btn { border: 1px solid var(--field-border); border-radius: 999px; padding: 9px 15px; font-size: 13px; font-family: inherit; background: var(--frost); color: var(--text); cursor: pointer; transition: transform .15s, opacity .15s, background .2s, box-shadow .2s; box-shadow: 0 8px 18px rgba(0,0,0,.22); }
+  .btn.primary { border-color: transparent; background: linear-gradient(135deg, var(--g1), var(--g2)); color: #050515; font-weight: 600; }
+  .btn.danger { color: var(--danger); }
+  .btn.armed { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); animation: shake .35s; }
+  .btn.small { padding: 6px 11px; font-size: 12px; }
+  .btn.grow { flex: 1; }
+  .btn:active { transform: scale(.95); opacity: .92; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .icon-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--field-border); background: var(--frost); color: var(--text); cursor: pointer; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; transition: transform .15s; flex: 0 0 auto; }
+  .icon-btn:active { transform: scale(.9); }
+  .icon-btn.spin { animation: spin .8s linear infinite; }
+  @keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+  /* Cards + entrance animation */
+  .card { border-radius: var(--radius-xl); padding: 16px; margin-top: 14px; background: var(--card-bg); border: 1px solid var(--card-border); box-shadow: var(--shadow-soft); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); animation: rise .55s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
+  @keyframes pop { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+  .card h3 { margin: 0 0 10px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+  .muted { font-size: 12px; color: var(--text-soft); }
+
+  /* Rate pill */
+  .rate-pill { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding: 6px 6px 6px 12px; border-radius: 999px; background: var(--frost); border: 1px solid var(--card-border); font-size: 11.5px; color: var(--text-soft); animation: rise .5s both; }
+  .rate-pill span.t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; }
+  .dot.live { background: var(--accent-3); box-shadow: 0 0 0 0 rgba(124,245,157,.6); animation: pulse 2s infinite; }
+  .dot.cached { background: var(--accent-2); }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 7px rgba(124,245,157,0); } 100% { box-shadow: 0 0 0 0 rgba(124,245,157,0); } }
+
+  /* Overview */
+  .ov-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .ov-top select { width: auto; padding: 6px 26px 6px 12px; font-size: 12px; }
+  .ov-total { font-size: 28px; font-weight: 700; letter-spacing: -.01em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .ov-meta { display: flex; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
+
+  /* Goal chips */
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; margin: 0 -2px; scrollbar-width: none; scroll-behavior: smooth; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: 0 0 auto; display: flex; flex-direction: column; gap: 5px; min-width: 118px; max-width: 170px; text-align: left; padding: 10px 12px; border-radius: 18px; border: 1px solid var(--field-border); background: var(--frost); color: var(--text); font-family: inherit; cursor: pointer; transition: transform .2s, border-color .2s, background .2s, box-shadow .2s; }
+  .chip:active { transform: scale(.96); }
+  .chip.active { border-color: var(--g1); box-shadow: 0 0 0 1px var(--g1), 0 8px 20px rgba(0,0,0,.25); background: var(--frost); transform: translateY(-1px); }
+  .chip-top { display: flex; gap: 6px; align-items: center; min-width: 0; }
+  .chip-ico { font-size: 15px; }
+  .chip-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip-pct { font-size: 11px; color: var(--text-soft); }
+  .chip-bar { height: 4px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .chip-bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--g1), var(--g2)); border-radius: 999px; transition: width .8s cubic-bezier(.2,.8,.2,1); }
+  .chip.add { align-items: center; justify-content: center; min-width: 96px; font-size: 13px; font-weight: 600; color: var(--accent-1); border-style: dashed; }
+
+  /* Ring */
+  .ring-card { position: relative; display: flex; justify-content: center; align-items: center; flex-direction: column; padding: 20px 12px 16px; }
+  .ring-card.pop { animation: pop .45s cubic-bezier(.2,1.1,.3,1) both; }
+  .gear { position: absolute; top: 12px; right: 12px; }
+  .circle-wrapper { position: relative; width: 156px; height: 156px; }
+  .progress-circle { width: 156px; height: 156px; transform: rotate(-90deg); overflow: visible; }
+  .progress-circle circle.bg { fill: none; stroke: var(--track); stroke-width: 10; }
+  .progress-circle circle.bar { fill: none; stroke: url(#ringGrad); stroke-width: 10; stroke-linecap: round; stroke-dasharray: 339.292; stroke-dashoffset: 339.292; transition: stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--g1) 55%, transparent)); }
+  .circle-core { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 94px; height: 94px; border-radius: 32px; background: var(--card-bg); border: 1px solid var(--card-border); box-shadow: 0 10px 22px rgba(0,0,0,.28), inset 0 0 8px rgba(255,255,255,.06); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .circle-text-main { font-size: 22px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .circle-text-sub { font-size: 11px; opacity: .8; margin-top: 2px; }
+  .circle-title { margin-top: 14px; font-size: 16px; font-weight: 650; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 8px; }
+  .circle-amounts { margin-top: 2px; font-size: 12px; color: var(--text-soft); text-align: center; font-variant-numeric: tabular-nums; }
+  .done-badge { margin-top: 8px; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px; background: rgba(124,245,157,.16); color: var(--accent-3); animation: pop .5s both; }
+  :root.light .done-badge { color: #138a45; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { padding: 10px 12px; border-radius: 16px; background: var(--frost); border: 1px solid var(--card-border); }
+  .stat .k { font-size: 10.5px; color: var(--text-soft); letter-spacing: .04em; text-transform: uppercase; }
+  .stat .v { font-size: 16px; font-weight: 650; margin-top: 3px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat .s { font-size: 11px; color: var(--text-soft); margin-top: 1px; min-height: 14px; }
+  .stat.warn .v { color: var(--accent-2); }
+
+  /* Inputs */
+  label { display: block; font-size: 11px; margin: 8px 2px 3px; color: var(--text-soft); }
+  .input-shell { margin-bottom: 6px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; min-width: 0; }
+  .row > .narrow { flex: 0 0 100px; }
+  input[type="text"], input[type="number"], input[type="date"], select { width: 100%; border-radius: 999px; border: 1px solid var(--field-border); padding: 10px 14px; font-size: 16px; font-family: inherit; color: var(--text); background: var(--frost); outline: none; appearance: none; -webkit-appearance: none; transition: border-color .2s, box-shadow .2s; min-height: 42px; }
+  input[type="date"] { color-scheme: dark; }
+  :root.light input[type="date"] { color-scheme: light; }
+  select { padding-right: 30px; background-image: linear-gradient(45deg, transparent 50%, var(--text-soft) 50%), linear-gradient(135deg, var(--text-soft) 50%, transparent 50%); background-position: calc(100% - 17px) 54%, calc(100% - 12px) 54%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  select option { color: #151728; background: #fff; }
+  input::placeholder { color: var(--muted); }
+  input:focus, select:focus { border-color: var(--g1); box-shadow: 0 0 0 1px var(--g1); }
+
+  .quick { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+  .quick .ql { font-size: 11px; color: var(--text-soft); margin-right: 2px; }
+  .qbtn { border: 1px solid var(--field-border); background: var(--frost); color: var(--text); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-family: inherit; cursor: pointer; transition: transform .15s, background .2s; }
+  .qbtn:active { transform: scale(.93); background: color-mix(in srgb, var(--g1) 25%, transparent); }
+
+  /* Progress bar */
+  .progress-shell { margin-top: 12px; height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  #progressBar { height: 100%; width: 0; background: linear-gradient(90deg, var(--g1), var(--accent-2), var(--g2)); background-size: 200% 100%; animation: slideGradient 2.2s linear infinite; transition: width 1s cubic-bezier(.2,.8,.2,1); border-radius: 999px; }
+  @keyframes slideGradient { 0% { background-position: 0 0; } 100% { background-position: 200% 0; } }
+
+  /* Entries */
+  .entry { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; margin-top: 6px; border-radius: 999px; background: var(--frost); border: 1px solid var(--card-border); font-size: 12px; }
+  .entry.enter { animation: slideIn .45s cubic-bezier(.2,.9,.3,1.1) both; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-24px) scale(.96); } to { opacity: 1; transform: none; } }
+  .entry-main { min-width: 0; }
+  .entry-amt { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry-sub { color: var(--text-soft); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry button { font-size: 11px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--field-border); background: var(--frost); color: var(--danger); cursor: pointer; font-family: inherit; flex: 0 0 auto; }
+  .empty { text-align: center; padding: 22px 8px; }
+  .empty .big { font-size: 34px; animation: float 3s ease-in-out infinite; }
+  @keyframes float { 50% { transform: translateY(-6px); } }
+
+  /* Converter */
+  .conv-row { display: flex; gap: 8px; align-items: center; }
+  .conv-row > .input-shell { flex: 1; min-width: 0; margin: 0; }
+  .conv-out { margin-top: 10px; font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+  /* Sheet */
+  .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 60; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+  .backdrop.open { opacity: 1; pointer-events: auto; }
+  .sheet { position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 420px; max-height: 92vh; overflow-y: auto; transform: translate(-50%, 105%); transition: transform .42s cubic-bezier(.2,.9,.25,1); z-index: 70; background: var(--sheet-bg); border: 1px solid var(--card-border); border-bottom: 0; border-radius: 26px 26px 0 0; padding: 10px 18px calc(22px + env(safe-area-inset-bottom)); box-shadow: 0 -16px 40px rgba(0,0,0,.4); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
+  .sheet.open { transform: translate(-50%, 0); }
+  .grab { width: 40px; height: 4px; border-radius: 4px; background: var(--track); margin: 2px auto 10px; }
+  .sheet-title { margin: 4px 0 6px; font-size: 18px; font-weight: 700; }
+  .ico-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .ico-btn { aspect-ratio: 1; border-radius: 14px; border: 1px solid var(--field-border); background: var(--frost); font-size: 20px; cursor: pointer; transition: transform .15s, border-color .2s; }
+  .ico-btn.sel { border-color: var(--g1); box-shadow: 0 0 0 1px var(--g1); transform: scale(1.06); }
+  .sw-row { display: flex; gap: 10px; }
+  .sw { width: 34px; height: 34px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: transform .15s; }
+  .sw.sel { border-color: var(--text); transform: scale(1.12); }
+  .danger-zone { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--card-border); }
+  .danger-zone .btn-row { margin-top: 0; }
+
+  /* Toast */
+  .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translate(-50%, 140%); transition: transform .4s cubic-bezier(.2,.9,.3,1.1); z-index: 95; display: flex; align-items: center; gap: 12px; max-width: min(92vw, 380px); padding: 10px 14px; border-radius: 999px; background: var(--sheet-bg); border: 1px solid var(--card-border); box-shadow: 0 12px 30px rgba(0,0,0,.4); font-size: 13px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+  .toast.show { transform: translate(-50%, 0); }
+  .toast button { border: 0; background: none; color: var(--accent-1); font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; padding: 2px 4px; }
+
+  .confetti { position: fixed; top: 0; width: 8px; height: 12px; border-radius: 3px; animation: fall 2.6s linear forwards; z-index: 99; pointer-events: none; }
+  @keyframes fall { 0% { transform: translateY(-10vh) rotateZ(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotateZ(540deg); opacity: 0; } }
+
+  footer { text-align: center; font-size: 11px; color: var(--muted); padding: 16px 0 24px; margin-top: auto; }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+  /* v5 additions */
+  .hbar { transform-box: fill-box; transform-origin: bottom; animation: grow .7s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  .hlab { fill: var(--text-soft); font-size: 10px; }
+  .hval { fill: var(--text); font-size: 10px; font-weight: 600; }
+  .prefs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; }
+  .prefs-row + .prefs-row { border-top: 1px solid var(--card-border); }
+  .prefs-row .pt { font-size: 14px; font-weight: 600; }
+  .ov-streak { font-weight: 600; }
+  /* v6 shopping list */
+  .prod { padding: 10px 12px; border-radius: 18px; background: var(--frost); border: 1px solid var(--card-border); margin-top: 8px; }
+  .prod-row { display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+  .prod-row input { flex: 1; min-width: 110px; padding: 7px 12px; min-height: 36px; }
+  a.qbtn { text-decoration: none; color: var(--text); display: inline-block; }
+</style>
+</head>
+<body>
+  <div class="bg-orbit"><i></i><i></i><i></i></div>
+
+  <div id="loadingScreen"><div class="loader">POCKET WALLET<div class="loader-dot"></div></div></div>
+
+  <div id="welcomeScreen">
+    <div class="welcome-card">
+      <h2 id="welcomeTitle">Welcome to Pocket Wallet</h2>
+      <p id="welcomeSub">Please select your language:</p>
+      <div class="input-shell">
+        <select id="languageSelect">
+          <option value="en">English</option>
+          <option value="th">ไทย (Thai)</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+        </select>
+      </div>
+      <button id="continueBtn" class="btn primary" style="margin-top:10px;width:100%;">Continue</button>
+    </div>
+  </div>
+
+  <div class="app-shell">
+    <div class="app">
+      <header class="topbar">
+        <div class="brand-stack">
+          <div class="topbar-title">Pocket Wallet</div>
+          <div class="topbar-sub" data-i18n="subtitle">Multi-currency savings goal tracker</div>
+        </div>
+        <div class="topbar-actions">
+          <select id="langQuick" aria-label="Language">
+            <option value="en">EN</option><option value="th">TH</option><option value="es">ES</option><option value="fr">FR</option><option value="de">DE</option>
+          </select>
+          <button id="themeBtn" class="btn" data-i18n="theme">Theme</button>
+        </div>
+      </header>
+
+      <main>
+        <div class="rate-pill" id="ratePill">
+          <span class="dot" id="rateDot"></span>
+          <span class="t" id="rateTxt">…</span>
+          <button class="icon-btn" id="refreshBtn" aria-label="Refresh rates">↻</button>
+        </div>
+
+        <section class="card hidden" id="overviewCard">
+          <div class="ov-top">
+            <div>
+              <h3 style="margin-bottom:2px;" data-i18n="overview">Overview</h3>
+              <div class="muted" data-i18n="totalSaved">Total saved</div>
+            </div>
+            <select id="homeCur" aria-label="Currency"></select>
+          </div>
+          <div class="ov-total" id="ovTotal">—</div>
+          <div class="muted" id="ovOf"></div>
+          <div class="ov-meta"><span class="muted" id="ovGoals"></span><span class="muted" id="ovNext"></span><span class="muted ov-streak" id="ovStreak"></span></div>
+        </section>
+
+        <section class="card">
+          <h3 data-i18n="goals">Your goals</h3>
+          <div class="chips" id="chips"></div>
+        </section>
+
+        <div id="activeArea" class="hidden">
+          <section class="card ring-card" id="ringCard">
+            <button class="icon-btn gear" id="gearBtn" aria-label="Manage goal">⚙️</button>
+            <div class="circle-wrapper">
+              <svg viewBox="0 0 120 120" class="progress-circle">
+                <defs>
+                  <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:var(--g1)"></stop>
+                    <stop offset="100%" style="stop-color:var(--g2)"></stop>
+                  </linearGradient>
+                </defs>
+                <circle cx="60" cy="60" r="54" class="bg"></circle>
+                <circle cx="60" cy="60" r="54" class="bar" id="circleBar"></circle>
+              </svg>
+              <div class="circle-core">
+                <div class="circle-text-main" id="circleMain">0%</div>
+                <div class="circle-text-sub" id="circleSub">—</div>
+              </div>
+            </div>
+            <div class="circle-title" id="circleTitle"></div>
+            <div class="circle-amounts"><span id="savedNum">0</span> <span id="ofTxt"></span></div>
+            <div class="done-badge hidden" id="doneBadge"></div>
+          </section>
+
+          <section class="card">
+            <h3 data-i18n="progress">Progress</h3>
+            <div class="stats">
+              <div class="stat"><div class="k" data-i18n="saved">Saved</div><div class="v" id="tSaved">—</div><div class="s" id="tSavedS"></div></div>
+              <div class="stat"><div class="k" data-i18n="remaining">Remaining</div><div class="v" id="tRemain">—</div><div class="s" id="tRemainS"></div></div>
+              <div class="stat" id="statDays"><div class="k" data-i18n="daysLeft">Days left</div><div class="v" id="tDays">—</div><div class="s" id="tDaysS"></div></div>
+              <div class="stat"><div class="k" data-i18n="perDay">Needed / day</div><div class="v" id="tPace">—</div><div class="s" id="tPaceS"></div></div>
+            </div>
+            <div class="progress-shell"><div id="progressBar"></div></div>
+            <div class="btn-row"><button id="shareBtn" class="btn small" data-i18n="shareBtn">Share progress</button></div>
+          </section>
+
+          <section class="card">
+            <h3 data-i18n="addSavings">Add savings</h3>
+            <div class="row">
+              <div class="input-shell"><input type="number" id="saveAmount" inputmode="decimal" min="0" data-i18n-ph="amount" placeholder="Amount" /></div>
+              <div class="input-shell narrow"><select id="saveCurrency"></select></div>
+            </div>
+            <div class="input-shell"><input type="text" id="saveNote" maxlength="60" data-i18n-ph="notePh" placeholder="Note (optional)" /></div>
+            <div class="btn-row" style="margin-top:4px;"><button id="addBtn" class="btn primary grow" data-i18n="addButton">+ Add</button></div>
+            <div class="quick" id="quick"></div>
+          </section>
+
+          <section class="card">
+            <h3 data-i18n="history">Savings history</h3>
+            <div id="historySvg"></div>
+          </section>
+          <section class="card">
+            <h3 data-i18n="entries">Entries</h3>
+            <div id="entries"></div>
+          </section>
+
+          <section class="card">
+            <h3 data-i18n="manageGoal">Manage goal</h3>
+            <button id="manageBtn" class="btn primary" style="width:100%;" data-i18n="manageGoal">Manage goal</button>
+          </section>
+        </div>
+
+        <section class="card empty hidden" id="emptyState">
+          <div class="big">🎯</div>
+          <div style="font-size:15px;font-weight:650;margin-top:6px;" data-i18n="noGoalsTitle">No goals yet</div>
+          <div class="muted" style="margin:4px 0 12px;" data-i18n="noGoalsSub">Create your first goal to start saving.</div>
+          <button id="emptyNewBtn" class="btn primary" data-i18n="newGoal">New goal</button>
+        </section>
+
+        <section class="card">
+          <h3 data-i18n="converter">Currency converter</h3>
+          <div class="conv-row">
+            <div class="input-shell"><input type="number" id="cAmt" inputmode="decimal" value="100" /></div>
+            <div class="input-shell" style="flex:0 0 92px;"><select id="cFrom"></select></div>
+            <button class="icon-btn" id="cSwap" aria-label="Swap">⇄</button>
+            <div class="input-shell" style="flex:0 0 92px;"><select id="cTo"></select></div>
+          </div>
+          <div class="conv-out" id="cOut">—</div>
+          <div class="muted" id="cRate"></div>
+        </section>
+
+        <section class="card">
+          <h3 data-i18n="shopTitle">Shopping list</h3>
+          <div class="muted" data-i18n="shopHint">Search the web, copy a product link, then save it here to track its price.</div>
+          <div class="row" style="margin-top:8px;">
+            <div class="input-shell"><input type="text" id="pSearch" data-i18n-ph="shopSearchPh" placeholder="Search a product" /></div>
+            <div class="narrow"><button id="pSearchBtn" class="btn small" style="width:100%;" data-i18n="searchWeb">Search web</button></div>
+          </div>
+          <div class="input-shell"><input type="text" id="pName" maxlength="60" data-i18n-ph="namePh" placeholder="Item name" /></div>
+          <div class="input-shell"><input type="text" id="pUrl" data-i18n-ph="linkPh" placeholder="Paste product link (https://…)" /></div>
+          <div class="row">
+            <div class="input-shell"><input type="number" id="pPrice" inputmode="decimal" min="0" step="any" data-i18n-ph="priceLabel" placeholder="Price" /></div>
+            <div class="input-shell narrow"><select id="pCur"></select></div>
+          </div>
+          <div class="btn-row"><button id="pAddBtn" class="btn primary grow" data-i18n="saveItem">Save item</button></div>
+          <div id="productList"></div>
+        </section>
+
+        <section class="card">
+          <h3 data-i18n="prefs">Preferences</h3>
+          <div class="prefs-row">
+            <div><div class="pt" data-i18n="haptics">Haptic feedback</div><div class="muted" data-i18n="hapticsSub">Vibrates on taps.</div></div>
+            <button class="btn small" id="hapBtn">On</button>
+          </div>
+          <div class="prefs-row">
+            <div><div class="pt" data-i18n="resetAll">Erase all data</div><div class="muted" data-i18n="resetSub">Deletes every goal and entry on this device.</div></div>
+            <button class="btn small danger" id="resetAll" data-i18n="resetAll">Erase all data</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3 data-i18n="backup">Backup</h3>
+          <div class="muted" data-i18n="backupHint">Your data is stored on this device only. Export a copy to keep it safe.</div>
+          <div class="btn-row">
+            <button id="exportBtn" class="btn small" data-i18n="exportBtn">Export</button>
+            <button id="importBtn" class="btn small" data-i18n="importBtn">Import</button>
+            <input type="file" id="importFile" accept="application/json,.json" class="hidden" />
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span data-i18n="contact">Contact me:</span>
+        <a href="mailto:mtpocketwallet@gmail.com">mtpocketwallet@gmail.com</a>
+      </footer>
+    </div>
+  </div>
+
+  <div class="backdrop" id="backdrop"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="grab"></div><div id="sheetBody"></div></div>
+  <div class="toast" id="toast"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const $ = id => document.getElementById(id);
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const hapticsOn = () => { try { return JSON.parse(localStorage.getItem("pw_haptics")) !== false; } catch (e) { return true; } };
+  let vibeWarned = false;
+  const vibeFail = () => { if (vibeWarned) return; vibeWarned = true; setTimeout(() => toast(t("hapBlocked")), 350); };
+  const buzz = p => {
+    if (!hapticsOn()) return;
+    try {
+      if (!navigator.vibrate) { vibeFail(); return; }
+      if (navigator.vibrate(p) === false) vibeFail();
+    } catch (e) { vibeFail(); }
+  };
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+
+  /* ---------- constants ---------- */
+  const CURRENCIES = ["GBP", "USD", "EUR", "THB", "JPY", "AUD", "CAD", "SGD", "CNY"];
+  const FALLBACK = { USD: 1, EUR: 0.92, GBP: 0.79, JPY: 155, THB: 36.2, AUD: 1.52, CAD: 1.38, SGD: 1.34, CNY: 7.2 };
+  const ICONS = ["🎯", "💻", "✈️", "🏠", "🚗", "🎓", "💍", "🎁", "📱", "🏝️", "🛡️", "🎮"];
+  const PALETTES = [["#7c9eff", "#ff7bc4"], ["#7cf59d", "#7c9eff"], ["#ffc857", "#ff7bc4"], ["#ff8a7c", "#ffc857"], ["#b57cff", "#7c9eff"], ["#5ee7df", "#7cf59d"]];
+  const CIRC = 339.292;
+  const AUTO_REFRESH = 5 * 60 * 1000;
+
+  /* ---------- state ---------- */
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  function normGoal(g) {
+    g = g || {};
+    return {
+      id: String(g.id || uid()),
+      name: String(g.name || "Goal").slice(0, 40),
+      amount: +g.amount > 0 ? +g.amount : 1,
+      currency: CURRENCIES.includes(g.currency) ? g.currency : "USD",
+      icon: ICONS.includes(g.icon) ? g.icon : "🎯",
+      color: Number.isInteger(g.color) && PALETTES[g.color] ? g.color : 0,
+      deadline: /^\d{4}-\d\d-\d\d$/.test(g.deadline || "") ? g.deadline : "",
+      entries: (Array.isArray(g.entries) ? g.entries : []).map(e => ({
+        id: String(e.id || uid()), amount: +e.amount || 0,
+        currency: CURRENCIES.includes(e.currency) ? e.currency : "USD",
+        date: +e.date || Date.now(), note: String(e.note || "").slice(0, 60)
+      })).filter(e => e.amount > 0),
+      celebrated: !!g.celebrated
+    };
+  }
+  let state = store.get("pw_state", { goals: [], active: null });
+  if (!state || !Array.isArray(state.goals)) state = { goals: [], active: null };
+  state.goals = state.goals.map(normGoal);
+  if (!state.goals.find(g => g.id === state.active)) state.active = state.goals[0] ? state.goals[0].id : null;
+
+  let lang = store.get("pw_lang", null);
+  let theme = store.get("pw_theme", "dark");
+  let home = store.get("pw_home", "USD");
+  if (!CURRENCIES.includes(home)) home = "USD";
+  let rates = { table: { ...FALLBACK }, updated: null, fetched: null, status: "offline", loading: false };
+  let lastAdded = null;
+
+  const save = () => store.set("pw_state", state);
+  const activeGoal = () => state.goals.find(g => g.id === state.active) || null;
+
+  /* ---------- translations ---------- */
+  const T = {
+    en: {
+      welcome: "Welcome to Pocket Wallet", selectLang: "Please select your language:", continue: "Continue",
+      subtitle: "Multi-currency savings goal tracker", theme: "Theme",
+      goals: "Your goals", newGoal: "New goal", editGoal: "Manage goal", goalName: "What are you saving for?", goalNamePh: "e.g. New laptop",
+      targetAmount: "Target amount", currency: "Currency", deadline: "Deadline", optional: "optional", icon: "Icon", color: "Colour",
+      create: "Create goal", saveChanges: "Save changes", cancel: "Cancel",
+      addSavings: "Add savings", amount: "Amount", notePh: "Note (optional)", addButton: "+ Add", quickAdd: "Quick add",
+      progress: "Progress", saved: "Saved", remaining: "Remaining", daysLeft: "Days left", perDay: "Needed / day", overdue: "Overdue", noDeadline: "No deadline", perWeek: "{a} / week",
+      entries: "Entries", noEntries: "No entries yet", clearEntries: "Clear all entries", manageGoal: "Manage goal", duplicate: "Duplicate goal", deleteGoal: "Delete goal", tapAgain: "Tap again to confirm", del: "Delete",
+      addGoalChip: "+ New goal", noGoalsTitle: "No goals yet", noGoalsSub: "Create your first goal to start saving.", contact: "Contact me:", invalid: "Please enter a name and an amount above 0.",
+      live: "Live rates", savedRates: "Saved rates", offline: "Offline estimates", updated: "updated", refresh: "Refresh", updating: "Updating rates…", ratesOk: "Rates updated", ratesFail: "Couldn't reach rate servers",
+      of: "of", reached: "🎉 Goal reached!", milestone: "{p}% of the way there!", undo: "Undo", goalDeleted: "Goal deleted", entriesCleared: "Entries cleared", entryRemoved: "Entry removed", added: "Added {a}",
+      goalSaved: "Goal updated", goalCreated: "Goal created", goalDuplicated: "Goal duplicated",
+      overview: "Overview", totalSaved: "Total saved", goalsCount: "{n} goals", nextDeadline: "Next: {n} in {d}d",
+      converter: "Currency converter", backup: "Backup", backupHint: "Your data is stored on this device only. Export a copy to keep it safe.", exportBtn: "Export", importBtn: "Import", imported: "Backup imported", importBad: "That file isn't a valid backup", exported: "Backup downloaded",
+      prefs: "Preferences", haptics: "Haptic feedback", hapticsSub: "Vibrates on taps, savings and milestones.", hapOn: "On", hapOff: "Off", history: "Savings history", streak: "🔥 {n}-day streak", noStreak: "Start a streak today", shareBtn: "Share progress", shareText: "{n}: {p}% saved — {a} of {t}", copied: "Copied to clipboard", resetAll: "Erase all data", resetSub: "Deletes every goal and entry on this device.", resetDone: "All data erased",
+      shopTitle: "Shopping list", shopHint: "Search the web, copy a product link, then save it here to track its price.", shopSearchPh: "Search a product", searchWeb: "Search web", namePh: "Item name", linkPh: "Paste product link (https://…)", priceLabel: "Price", saveItem: "Save item", noProducts: "No saved items yet", noPrice: "No price yet", lastPrice: "Checked {t}", openLink: "Open", updatePrice: "Update price", setTarget: "Use as goal target", priceInvalid: "Enter a price above 0", priceUpdated: "Price updated", targetSet: "Goal target set to this price", productSaved: "Item saved", productDeleted: "Item removed", shopNeedQuery: "Type what you’re looking for", shopNeedLink: "Enter a name and a valid https link",
+      hapBlocked: "Vibration is blocked here. Open the file directly in Chrome on Android, not in a preview.",
+      daysUnit: "{n}d"
+    },
+    th: {
+      welcome: "ยินดีต้อนรับสู่ Pocket Wallet", selectLang: "กรุณาเลือกภาษา:", continue: "ดำเนินการต่อ",
+      subtitle: "ตัวติดตามเป้าหมายการออมหลายสกุลเงิน", theme: "ธีม",
+      goals: "เป้าหมายของคุณ", newGoal: "เป้าหมายใหม่", editGoal: "จัดการเป้าหมาย", goalName: "คุณกำลังออมเพื่ออะไร?", goalNamePh: "เช่น แล็ปท็อปใหม่",
+      targetAmount: "จำนวนเงินเป้าหมาย", currency: "สกุลเงิน", deadline: "กำหนดเวลา", optional: "ไม่บังคับ", icon: "ไอคอน", color: "สี",
+      create: "สร้างเป้าหมาย", saveChanges: "บันทึกการเปลี่ยนแปลง", cancel: "ยกเลิก",
+      addSavings: "เพิ่มการออม", amount: "จำนวนเงิน", notePh: "บันทึก (ไม่บังคับ)", addButton: "+ เพิ่ม", quickAdd: "เพิ่มด่วน",
+      progress: "ความคืบหน้า", saved: "ออมแล้ว", remaining: "คงเหลือ", daysLeft: "เหลืออีก (วัน)", perDay: "ต้องออม / วัน", overdue: "เกินกำหนด", noDeadline: "ไม่มีกำหนด", perWeek: "{a} / สัปดาห์",
+      entries: "รายการ", noEntries: "ยังไม่มีรายการ", clearEntries: "ล้างรายการทั้งหมด", manageGoal: "จัดการเป้าหมาย", duplicate: "ทำสำเนาเป้าหมาย", deleteGoal: "ลบเป้าหมาย", tapAgain: "แตะอีกครั้งเพื่อยืนยัน", del: "ลบ",
+      addGoalChip: "+ เป้าหมายใหม่", noGoalsTitle: "ยังไม่มีเป้าหมาย", noGoalsSub: "สร้างเป้าหมายแรกเพื่อเริ่มออม", contact: "ติดต่อฉัน:", invalid: "กรุณากรอกชื่อและจำนวนเงินที่มากกว่า 0",
+      live: "อัตราแลกเปลี่ยนสด", savedRates: "อัตราที่บันทึกไว้", offline: "ค่าประมาณออฟไลน์", updated: "อัปเดต", refresh: "รีเฟรช", updating: "กำลังอัปเดตอัตรา…", ratesOk: "อัปเดตอัตราแล้ว", ratesFail: "เชื่อมต่อเซิร์ฟเวอร์อัตราไม่ได้",
+      of: "จาก", reached: "🎉 ถึงเป้าหมายแล้ว!", milestone: "ไปได้ {p}% แล้ว!", undo: "เลิกทำ", goalDeleted: "ลบเป้าหมายแล้ว", entriesCleared: "ล้างรายการแล้ว", entryRemoved: "ลบรายการแล้ว", added: "เพิ่ม {a} แล้ว",
+      goalSaved: "อัปเดตเป้าหมายแล้ว", goalCreated: "สร้างเป้าหมายแล้ว", goalDuplicated: "ทำสำเนาเป้าหมายแล้ว",
+      overview: "ภาพรวม", totalSaved: "ออมรวมทั้งหมด", goalsCount: "{n} เป้าหมาย", nextDeadline: "ถัดไป: {n} ใน {d} วัน",
+      converter: "แปลงสกุลเงิน", backup: "สำรองข้อมูล", backupHint: "ข้อมูลเก็บในอุปกรณ์นี้เท่านั้น ส่งออกสำเนาไว้เพื่อความปลอดภัย", exportBtn: "ส่งออก", importBtn: "นำเข้า", imported: "นำเข้าข้อมูลสำรองแล้ว", importBad: "ไฟล์นี้ไม่ใช่ข้อมูลสำรองที่ถูกต้อง", exported: "ดาวน์โหลดข้อมูลสำรองแล้ว",
+      prefs: "การตั้งค่า", haptics: "การสั่นตอบสนอง", hapticsSub: "สั่นเมื่อแตะ บันทึกการออม และถึงไมล์สโตน", hapOn: "เปิด", hapOff: "ปิด", history: "ประวัติการออม", streak: "🔥 ติดต่อกัน {n} วัน", noStreak: "เริ่มสตรีคได้วันนี้", shareBtn: "แชร์ความคืบหน้า", shareText: "{n}: ออมแล้ว {p}% — {a} จาก {t}", copied: "คัดลอกไปยังคลิปบอร์ดแล้ว", resetAll: "ลบข้อมูลทั้งหมด", resetSub: "ลบเป้าหมายและรายการทั้งหมดบนอุปกรณ์นี้", resetDone: "ลบข้อมูลทั้งหมดแล้ว",
+      shopTitle: "รายการสินค้า", shopHint: "ค้นหาในเว็บ คัดลอกลิงก์สินค้า แล้วบันทึกที่นี่เพื่อติดตามราคา", shopSearchPh: "ค้นหาสินค้า", searchWeb: "ค้นหาในเว็บ", namePh: "ชื่อสินค้า", linkPh: "วางลิงก์สินค้า (https://…)", priceLabel: "ราคา", saveItem: "บันทึกสินค้า", noProducts: "ยังไม่มีสินค้าที่บันทึก", noPrice: "ยังไม่มีราคา", lastPrice: "ตรวจล่าสุด {t}", openLink: "เปิด", updatePrice: "อัปเดตราคา", setTarget: "ใช้เป็นเป้าหมาย", priceInvalid: "กรอกราคาที่มากกว่า 0", priceUpdated: "อัปเดตราคาแล้ว", targetSet: "ตั้งเป้าหมายตามราคานี้แล้ว", productSaved: "บันทึกสินค้าแล้ว", productDeleted: "ลบสินค้าแล้ว", shopNeedQuery: "พิมพ์สิ่งที่ต้องการค้นหา", shopNeedLink: "กรอกชื่อและลิงก์ https ที่ถูกต้อง",
+      hapBlocked: "การสั่นถูกบล็อกในที่นี่ ให้เปิดไฟล์ใน Chrome บน Android โดยตรง ไม่ใช่ในหน้าพรีวิว",
+      daysUnit: "{n} วัน"
+    },
+    es: {
+      welcome: "Bienvenido a Pocket Wallet", selectLang: "Selecciona tu idioma:", continue: "Continuar",
+      subtitle: "Seguimiento de metas de ahorro multidivisa", theme: "Tema",
+      goals: "Tus metas", newGoal: "Nueva meta", editGoal: "Gestionar meta", goalName: "¿Para qué estás ahorrando?", goalNamePh: "p. ej. Portátil nuevo",
+      targetAmount: "Importe objetivo", currency: "Moneda", deadline: "Fecha límite", optional: "opcional", icon: "Icono", color: "Color",
+      create: "Crear meta", saveChanges: "Guardar cambios", cancel: "Cancelar",
+      addSavings: "Añadir ahorro", amount: "Importe", notePh: "Nota (opcional)", addButton: "+ Añadir", quickAdd: "Añadir rápido",
+      progress: "Progreso", saved: "Ahorrado", remaining: "Restante", daysLeft: "Días restantes", perDay: "Necesario / día", overdue: "Vencida", noDeadline: "Sin fecha", perWeek: "{a} / semana",
+      entries: "Movimientos", noEntries: "Sin movimientos", clearEntries: "Borrar todos los movimientos", manageGoal: "Gestionar meta", duplicate: "Duplicar meta", deleteGoal: "Eliminar meta", tapAgain: "Toca de nuevo para confirmar", del: "Borrar",
+      addGoalChip: "+ Nueva meta", noGoalsTitle: "Aún no hay metas", noGoalsSub: "Crea tu primera meta para empezar a ahorrar.", contact: "Contáctame:", invalid: "Introduce un nombre y un importe mayor que 0.",
+      live: "Tipos en vivo", savedRates: "Tipos guardados", offline: "Estimaciones sin conexión", updated: "actualizado", refresh: "Actualizar", updating: "Actualizando tipos…", ratesOk: "Tipos actualizados", ratesFail: "No se pudo conectar con los servidores",
+      of: "de", reached: "🎉 ¡Meta alcanzada!", milestone: "¡Ya llevas el {p}%!", undo: "Deshacer", goalDeleted: "Meta eliminada", entriesCleared: "Movimientos borrados", entryRemoved: "Movimiento eliminado", added: "Añadido {a}",
+      goalSaved: "Meta actualizada", goalCreated: "Meta creada", goalDuplicated: "Meta duplicada",
+      overview: "Resumen", totalSaved: "Total ahorrado", goalsCount: "{n} metas", nextDeadline: "Próxima: {n} en {d} d",
+      converter: "Conversor de divisas", backup: "Copia de seguridad", backupHint: "Tus datos se guardan solo en este dispositivo. Exporta una copia para conservarlos.", exportBtn: "Exportar", importBtn: "Importar", imported: "Copia importada", importBad: "Ese archivo no es una copia válida", exported: "Copia descargada",
+      prefs: "Preferencias", haptics: "Vibración háptica", hapticsSub: "Vibra al tocar, al ahorrar y en hitos.", hapOn: "Sí", hapOff: "No", history: "Historial de ahorro", streak: "🔥 Racha de {n} días", noStreak: "Empieza una racha hoy", shareBtn: "Compartir progreso", shareText: "{n}: {p}% ahorrado — {a} de {t}", copied: "Copiado al portapapeles", resetAll: "Borrar todos los datos", resetSub: "Elimina todas las metas y movimientos de este dispositivo.", resetDone: "Datos borrados",
+      shopTitle: "Lista de compras", shopHint: "Busca en la web, copia el enlace del producto y guárdalo aquí para seguir su precio.", shopSearchPh: "Buscar un producto", searchWeb: "Buscar en la web", namePh: "Nombre del artículo", linkPh: "Pega el enlace del producto (https://…)", priceLabel: "Precio", saveItem: "Guardar artículo", noProducts: "Aún no hay artículos guardados", noPrice: "Sin precio aún", lastPrice: "Revisado {t}", openLink: "Abrir", updatePrice: "Actualizar precio", setTarget: "Usar como meta", priceInvalid: "Introduce un precio mayor que 0", priceUpdated: "Precio actualizado", targetSet: "Meta fijada a este precio", productSaved: "Artículo guardado", productDeleted: "Artículo eliminado", shopNeedQuery: "Escribe lo que buscas", shopNeedLink: "Introduce un nombre y un enlace https válido",
+      hapBlocked: "La vibración está bloqueada aquí. Abre el archivo directamente en Chrome para Android, no en una vista previa.",
+      daysUnit: "{n} d"
+    },
+    fr: {
+      welcome: "Bienvenue sur Pocket Wallet", selectLang: "Choisissez votre langue :", continue: "Continuer",
+      subtitle: "Suivi d’objectifs d’épargne multidevises", theme: "Thème",
+      goals: "Vos objectifs", newGoal: "Nouvel objectif", editGoal: "Gérer l’objectif", goalName: "Pour quoi épargnez-vous ?", goalNamePh: "ex. Nouvel ordinateur",
+      targetAmount: "Montant cible", currency: "Devise", deadline: "Échéance", optional: "facultatif", icon: "Icône", color: "Couleur",
+      create: "Créer l’objectif", saveChanges: "Enregistrer", cancel: "Annuler",
+      addSavings: "Ajouter une épargne", amount: "Montant", notePh: "Note (facultatif)", addButton: "+ Ajouter", quickAdd: "Ajout rapide",
+      progress: "Progression", saved: "Épargné", remaining: "Restant", daysLeft: "Jours restants", perDay: "Requis / jour", overdue: "En retard", noDeadline: "Sans échéance", perWeek: "{a} / semaine",
+      entries: "Entrées", noEntries: "Aucune entrée", clearEntries: "Effacer toutes les entrées", manageGoal: "Gérer l’objectif", duplicate: "Dupliquer l’objectif", deleteGoal: "Supprimer l’objectif", tapAgain: "Touchez encore pour confirmer", del: "Suppr.",
+      addGoalChip: "+ Nouvel objectif", noGoalsTitle: "Aucun objectif", noGoalsSub: "Créez votre premier objectif pour commencer.", contact: "Me contacter :", invalid: "Saisissez un nom et un montant supérieur à 0.",
+      live: "Taux en direct", savedRates: "Taux enregistrés", offline: "Estimations hors ligne", updated: "mis à jour", refresh: "Actualiser", updating: "Mise à jour des taux…", ratesOk: "Taux mis à jour", ratesFail: "Serveurs de taux injoignables",
+      of: "sur", reached: "🎉 Objectif atteint !", milestone: "Déjà {p} % du chemin !", undo: "Annuler", goalDeleted: "Objectif supprimé", entriesCleared: "Entrées effacées", entryRemoved: "Entrée supprimée", added: "{a} ajouté",
+      goalSaved: "Objectif mis à jour", goalCreated: "Objectif créé", goalDuplicated: "Objectif dupliqué",
+      overview: "Aperçu", totalSaved: "Total épargné", goalsCount: "{n} objectifs", nextDeadline: "Prochain : {n} dans {d} j",
+      converter: "Convertisseur de devises", backup: "Sauvegarde", backupHint: "Vos données restent sur cet appareil. Exportez une copie pour les garder.", exportBtn: "Exporter", importBtn: "Importer", imported: "Sauvegarde importée", importBad: "Ce fichier n’est pas une sauvegarde valide", exported: "Sauvegarde téléchargée",
+      prefs: "Préférences", haptics: "Retour haptique", hapticsSub: "Vibre au toucher, à l’épargne et aux jalons.", hapOn: "Oui", hapOff: "Non", history: "Historique d’épargne", streak: "🔥 Série de {n} jours", noStreak: "Commencez une série aujourd’hui", shareBtn: "Partager la progression", shareText: "{n} : {p} % épargné — {a} sur {t}", copied: "Copié dans le presse-papiers", resetAll: "Effacer toutes les données", resetSub: "Supprime tous les objectifs et entrées de cet appareil.", resetDone: "Données effacées",
+      shopTitle: "Liste d’achats", shopHint: "Cherchez sur le web, copiez le lien du produit et enregistrez-le ici pour suivre son prix.", shopSearchPh: "Rechercher un produit", searchWeb: "Chercher sur le web", namePh: "Nom de l’article", linkPh: "Collez le lien du produit (https://…)", priceLabel: "Prix", saveItem: "Enregistrer l’article", noProducts: "Aucun article enregistré", noPrice: "Pas encore de prix", lastPrice: "Vérifié {t}", openLink: "Ouvrir", updatePrice: "Mettre à jour le prix", setTarget: "Utiliser comme objectif", priceInvalid: "Saisissez un prix supérieur à 0", priceUpdated: "Prix mis à jour", targetSet: "Objectif fixé à ce prix", productSaved: "Article enregistré", productDeleted: "Article supprimé", shopNeedQuery: "Saisissez ce que vous cherchez", shopNeedLink: "Saisissez un nom et un lien https valide",
+      hapBlocked: "La vibration est bloquée ici. Ouvrez le fichier directement dans Chrome sur Android, pas dans un aperçu.",
+      daysUnit: "{n} j"
+    },
+    de: {
+      welcome: "Willkommen bei Pocket Wallet", selectLang: "Bitte wähle deine Sprache:", continue: "Weiter",
+      subtitle: "Sparziel-Tracker für mehrere Währungen", theme: "Design",
+      goals: "Deine Ziele", newGoal: "Neues Ziel", editGoal: "Ziel verwalten", goalName: "Wofür sparst du?", goalNamePh: "z. B. Neuer Laptop",
+      targetAmount: "Zielbetrag", currency: "Währung", deadline: "Frist", optional: "optional", icon: "Symbol", color: "Farbe",
+      create: "Ziel erstellen", saveChanges: "Änderungen speichern", cancel: "Abbrechen",
+      addSavings: "Sparbetrag hinzufügen", amount: "Betrag", notePh: "Notiz (optional)", addButton: "+ Hinzufügen", quickAdd: "Schnell hinzufügen",
+      progress: "Fortschritt", saved: "Gespart", remaining: "Übrig", daysLeft: "Tage übrig", perDay: "Nötig / Tag", overdue: "Überfällig", noDeadline: "Keine Frist", perWeek: "{a} / Woche",
+      entries: "Einträge", noEntries: "Noch keine Einträge", clearEntries: "Alle Einträge löschen", manageGoal: "Ziel verwalten", duplicate: "Ziel duplizieren", deleteGoal: "Ziel löschen", tapAgain: "Zum Bestätigen erneut tippen", del: "Löschen",
+      addGoalChip: "+ Neues Ziel", noGoalsTitle: "Noch keine Ziele", noGoalsSub: "Erstelle dein erstes Ziel, um zu starten.", contact: "Kontakt:", invalid: "Bitte Namen und Betrag über 0 eingeben.",
+      live: "Live-Kurse", savedRates: "Gespeicherte Kurse", offline: "Offline-Schätzung", updated: "aktualisiert", refresh: "Aktualisieren", updating: "Kurse werden aktualisiert…", ratesOk: "Kurse aktualisiert", ratesFail: "Kurs-Server nicht erreichbar",
+      of: "von", reached: "🎉 Ziel erreicht!", milestone: "Schon {p} % geschafft!", undo: "Rückgängig", goalDeleted: "Ziel gelöscht", entriesCleared: "Einträge gelöscht", entryRemoved: "Eintrag entfernt", added: "{a} hinzugefügt",
+      goalSaved: "Ziel aktualisiert", goalCreated: "Ziel erstellt", goalDuplicated: "Ziel dupliziert",
+      overview: "Übersicht", totalSaved: "Insgesamt gespart", goalsCount: "{n} Ziele", nextDeadline: "Nächstes: {n} in {d} T",
+      converter: "Währungsrechner", backup: "Sicherung", backupHint: "Deine Daten liegen nur auf diesem Gerät. Exportiere eine Kopie zur Sicherheit.", exportBtn: "Exportieren", importBtn: "Importieren", imported: "Sicherung importiert", importBad: "Das ist keine gültige Sicherung", exported: "Sicherung heruntergeladen",
+      prefs: "Einstellungen", haptics: "Haptisches Feedback", hapticsSub: "Vibriert bei Tippen, Sparen und Meilensteinen.", hapOn: "An", hapOff: "Aus", history: "Sparverlauf", streak: "🔥 {n}-Tage-Serie", noStreak: "Starte heute eine Serie", shareBtn: "Fortschritt teilen", shareText: "{n}: {p} % gespart — {a} von {t}", copied: "In die Zwischenablage kopiert", resetAll: "Alle Daten löschen", resetSub: "Löscht alle Ziele und Einträge auf diesem Gerät.", resetDone: "Alle Daten gelöscht",
+      shopTitle: "Einkaufsliste", shopHint: "Im Web suchen, Produktlink kopieren und hier speichern, um den Preis zu verfolgen.", shopSearchPh: "Produkt suchen", searchWeb: "Im Web suchen", namePh: "Artikelname", linkPh: "Produktlink einfügen (https://…)", priceLabel: "Preis", saveItem: "Artikel speichern", noProducts: "Noch keine gespeicherten Artikel", noPrice: "Noch kein Preis", lastPrice: "Geprüft {t}", openLink: "Öffnen", updatePrice: "Preis aktualisieren", setTarget: "Als Ziel nutzen", priceInvalid: "Preis über 0 eingeben", priceUpdated: "Preis aktualisiert", targetSet: "Ziel auf diesen Preis gesetzt", productSaved: "Artikel gespeichert", productDeleted: "Artikel entfernt", shopNeedQuery: "Bitte etwas zum Suchen eingeben", shopNeedLink: "Name und gültigen https-Link eingeben",
+      hapBlocked: "Vibration ist hier blockiert. Öffne die Datei direkt in Chrome auf Android, nicht in einer Vorschau.",
+      daysUnit: "{n} T"
+    }
+  };
+  const t = (k, v) => {
+    let s = (T[lang] && T[lang][k]) || T.en[k] || k;
+    if (v) for (const key in v) s = s.replace("{" + key + "}", v[key]);
+    return s;
+  };
+
+  function applyTranslations() {
+    document.documentElement.lang = lang || "en";
+    document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+    $("welcomeTitle").textContent = t("welcome");
+    $("welcomeSub").textContent = t("selectLang");
+    $("continueBtn").textContent = t("continue");
+    $("languageSelect").value = lang || "en";
+    $("langQuick").value = lang || "en";
+  }
+
+  /* ---------- helpers ---------- */
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  function fmt(n, cur) {
+    const digits = (cur === "JPY" || cur === "THB") ? 0 : 2;
+    try { return new Intl.NumberFormat(lang || "en", { style: "currency", currency: cur, maximumFractionDigits: digits, minimumFractionDigits: 0 }).format(n); }
+    catch (e) { return n.toFixed(digits) + " " + cur; }
+  }
+  const convert = (amt, from, to) => { const a = rates.table[from], b = rates.table[to]; return (a && b) ? amt / a * b : amt; };
+  const goalTotal = g => g.entries.reduce((s, e) => s + convert(e.amount, e.currency, g.currency), 0);
+  const goalPct = g => g.amount > 0 ? Math.min(100, goalTotal(g) / g.amount * 100) : 0;
+  function daysLeft(g) {
+    if (!g.deadline) return null;
+    const end = new Date(g.deadline + "T23:59:59").getTime();
+    return Math.ceil((end - Date.now()) / 864e5);
+  }
+  function tween(el, to, format, dur = 700) {
+    if (!el) return;
+    const from = el._v === undefined ? 0 : el._v;
+    el._v = to;
+    cancelAnimationFrame(el._r);
+    if (reduce || from === to) { el.textContent = format(to); return; }
+    const s = performance.now();
+    const step = now => {
+      const k = Math.min(1, (now - s) / dur), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = format(from + (to - from) * e);
+      if (k < 1) el._r = requestAnimationFrame(step);
+    };
+    el._r = requestAnimationFrame(step);
+  }
+  function setPal(el, g) { const p = PALETTES[g ? g.color : 0]; el.style.setProperty("--g1", p[0]); el.style.setProperty("--g2", p[1]); }
+  function relTime(ts) {
+    try {
+      const rtf = new Intl.RelativeTimeFormat(lang || "en", { numeric: "auto" });
+      const s = Math.round((ts - Date.now()) / 1000), a = Math.abs(s);
+      if (a < 45) return rtf.format(0, "second");
+      if (a < 3600) return rtf.format(Math.round(s / 60), "minute");
+      if (a < 86400) return rtf.format(Math.round(s / 3600), "hour");
+      return rtf.format(Math.round(s / 86400), "day");
+    } catch (e) { return new Date(ts).toLocaleString(); }
+  }
+
+  /* ---------- toast ---------- */
+  let toastT;
+  function hideToast() { $("toast").classList.remove("show"); }
+  function toast(msg, undo) {
+    const el = $("toast");
+    el.innerHTML = "<span></span>" + (undo ? "<button>" + esc(t("undo")) + "</button>" : "");
+    el.firstChild.textContent = msg;
+    if (undo) el.querySelector("button").onclick = () => { undo(); hideToast(); };
+    el.classList.add("show");
+    clearTimeout(toastT);
+    toastT = setTimeout(hideToast, undo ? 6000 : 2600);
+  }
+
+  /* ---------- live rates ---------- */
+  async function fetchJson(url) {
+    const ctrl = new AbortController();
+    const tm = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const r = await fetch(url, { cache: "no-store", signal: ctrl.signal });
+      if (!r.ok) throw new Error("http " + r.status);
+      return await r.json();
+    } finally { clearTimeout(tm); }
+  }
+  const SOURCES = [
+    async () => { const j = await fetchJson("https://open.er-api.com/v6/latest/USD"); if (j.result !== "success") throw new Error("bad"); return { data: j.rates, ts: (j.time_last_update_unix || 0) * 1000 }; },
+    async () => { const j = await fetchJson("https://api.frankfurter.dev/v1/latest?base=USD"); if (!j.rates) throw new Error("bad"); return { data: { USD: 1, ...j.rates }, ts: j.date ? new Date(j.date + "T16:00:00Z").getTime() : 0 }; },
+    async () => { const j = await fetchJson("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"); if (!j.usd) throw new Error("bad"); const d = { USD: 1 }; for (const k in j.usd) d[k.toUpperCase()] = j.usd[k]; return { data: d, ts: j.date ? new Date(j.date + "T00:00:00Z").getTime() : 0 }; }
+  ];
+  function applyRates(raw, ts) {
+    const table = { ...FALLBACK };
+    CURRENCIES.forEach(c => { if (raw[c] > 0) table[c] = raw[c]; });
+    table.USD = 1;
+    const now = Date.now();
+    rates.table = table; rates.fetched = now; rates.updated = ts && ts < now + 864e5 ? ts : now;
+    store.set("pw_rates", { table, fetched: now, updated: rates.updated });
+  }
+  async function loadRates(manual) {
+    if (rates.loading) return;
+    rates.loading = true; renderRates();
+    let ok = false;
+    for (const src of SOURCES) {
+      try { const r = await src(); applyRates(r.data, r.ts); ok = true; break; } catch (e) { /* next source */ }
+    }
+    rates.loading = false;
+    rates.status = ok ? "live" : (rates.fetched ? "cached" : "offline");
+    if (manual) toast(ok ? t("ratesOk") : t("ratesFail"));
+    render();
+  }
+  function renderRates() {
+    const dot = $("rateDot"), txt = $("rateTxt"), btn = $("refreshBtn");
+    dot.className = "dot " + (rates.loading ? "" : rates.status === "live" ? "live" : rates.status === "cached" ? "cached" : "");
+    btn.classList.toggle("spin", rates.loading);
+    if (rates.loading) { txt.textContent = t("updating"); return; }
+    const label = rates.status === "live" ? t("live") : rates.status === "cached" ? t("savedRates") : t("offline");
+    const ts = rates.fetched || rates.updated;
+    txt.textContent = label + (ts ? " · " + t("updated") + " " + relTime(ts) : "");
+  }
+  const cached = store.get("pw_rates", null);
+  if (cached && cached.table) { rates.table = { ...FALLBACK, ...cached.table }; rates.fetched = cached.fetched; rates.updated = cached.updated; rates.status = "cached"; }
+
+  /* ---------- rendering ---------- */
+  function renderOverview() {
+    const card = $("overviewCard"), has = state.goals.length > 0;
+    card.classList.toggle("hidden", !has);
+    if (!has) return;
+    const total = state.goals.reduce((s, g) => s + convert(goalTotal(g), g.currency, home), 0);
+    const target = state.goals.reduce((s, g) => s + convert(g.amount, g.currency, home), 0);
+    tween($("ovTotal"), total, v => fmt(v, home));
+    $("ovOf").textContent = t("of") + " " + fmt(target, home);
+    $("ovGoals").textContent = t("goalsCount", { n: state.goals.length });
+    let next = null;
+    state.goals.forEach(g => { const d = daysLeft(g); if (d !== null && d > 0 && goalPct(g) < 100 && (!next || d < next.d)) next = { n: g.name, d }; });
+    $("ovNext").textContent = next ? "· " + t("nextDeadline", { n: next.n, d: next.d }) : "";
+    const st = streakOf();
+    $("ovStreak").textContent = st ? t("streak", { n: st }) : t("noStreak");
+  }
+
+  function renderChips() {
+    const box = $("chips"), sl = box.scrollLeft;
+    box.innerHTML = state.goals.map(g => {
+      const p = goalPct(g), pal = PALETTES[g.color];
+      return `<button class="chip ${g.id === state.active ? "active" : ""}" data-id="${g.id}" style="--g1:${pal[0]};--g2:${pal[1]}">
+        <span class="chip-top"><span class="chip-ico">${g.icon}</span><span class="chip-name">${esc(g.name)}</span></span>
+        <span class="chip-pct">${Math.round(p)}% · ${esc(g.currency)}</span>
+        <span class="chip-bar"><i data-w="${p}"></i></span></button>`;
+    }).join("") + `<button class="chip add" id="addChip">${esc(t("addGoalChip"))}</button>`;
+    box.style.scrollBehavior = "auto"; box.scrollLeft = sl; box.style.scrollBehavior = "";
+    requestAnimationFrame(() => requestAnimationFrame(() => box.querySelectorAll("i[data-w]").forEach(i => { i.style.width = i.dataset.w + "%"; })));
+    box.querySelectorAll(".chip[data-id]").forEach(b => b.addEventListener("click", () => selectGoal(b.dataset.id)));
+    $("addChip").addEventListener("click", () => openGoalSheet(null));
+  }
+
+  function selectGoal(id) {
+    if (state.active === id) return;
+    state.active = id; save();
+    const g = activeGoal(); if (g) $("saveCurrency").value = g.currency;
+    const rc = $("ringCard"); rc.classList.remove("pop"); void rc.offsetWidth; rc.classList.add("pop");
+    render();
+  }
+
+  function niceStep(x) {
+    const p = Math.pow(10, Math.floor(Math.log10(x))), n = x / p;
+    return (n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10) * p;
+  }
+
+  function renderActive() {
+    const g = activeGoal();
+    $("activeArea").classList.toggle("hidden", !g);
+    $("emptyState").classList.toggle("hidden", !!g);
+    if (!g) return;
+    setPal($("activeArea"), g);
+    const total = goalTotal(g), p = goalPct(g), remain = Math.max(0, g.amount - total);
+    $("circleBar").style.strokeDashoffset = CIRC * (1 - p / 100);
+    tween($("circleMain"), p, v => Math.round(v) + "%");
+    $("circleSub").textContent = g.currency;
+    $("circleTitle").textContent = g.icon + " " + g.name;
+    tween($("savedNum"), total, v => fmt(v, g.currency));
+    $("ofTxt").textContent = t("of") + " " + fmt(g.amount, g.currency);
+    const done = p >= 100;
+    $("doneBadge").classList.toggle("hidden", !done);
+    $("doneBadge").textContent = t("reached");
+
+    tween($("tSaved"), total, v => fmt(v, g.currency));
+    tween($("tRemain"), remain, v => fmt(v, g.currency));
+    $("tSavedS").textContent = p.toFixed(1) + "%";
+    $("tRemainS").textContent = g.entries.length ? "" : "";
+    const d = daysLeft(g);
+    const statDays = $("statDays"); statDays.classList.toggle("warn", d !== null && d <= 0 && !done);
+    if (d === null) { $("tDays").textContent = "—"; $("tDaysS").textContent = t("noDeadline"); $("tPace").textContent = "—"; $("tPaceS").textContent = ""; }
+    else {
+      $("tDays").textContent = d > 0 ? t("daysUnit", { n: d }) : t("overdue");
+      $("tDaysS").textContent = new Date(g.deadline + "T12:00:00").toLocaleDateString(lang || "en", { day: "numeric", month: "short", year: "numeric" });
+      if (done) { $("tPace").textContent = "🎉"; $("tPaceS").textContent = ""; }
+      else if (d > 0) { const pd = remain / d; $("tPace").textContent = fmt(pd, g.currency); $("tPaceS").textContent = t("perWeek", { a: fmt(pd * 7, g.currency) }); }
+      else { $("tPace").textContent = fmt(remain, g.currency); $("tPaceS").textContent = ""; }
+    }
+    $("progressBar").style.width = p + "%";
+
+    const base = niceStep(g.amount / 20);
+    $("quick").innerHTML = `<span class="ql">${esc(t("quickAdd"))}</span>` + [base, base * 2, base * 5].map(v => `<button class="qbtn" data-v="${v}">+${esc(fmt(v, g.currency))}</button>`).join("");
+    $("quick").querySelectorAll(".qbtn").forEach(b => b.addEventListener("click", () => addEntry(g, +b.dataset.v, g.currency, "")));
+
+    const box = $("entries");
+    if (!g.entries.length) box.innerHTML = `<div class="muted empty">${esc(t("noEntries"))}</div>`;
+    else {
+      box.innerHTML = g.entries.slice().reverse().map(e => {
+        const conv = e.currency !== g.currency ? ` ≈ ${fmt(convert(e.amount, e.currency, g.currency), g.currency)}` : "";
+        const dt = new Date(e.date).toLocaleDateString(lang || "en", { day: "numeric", month: "short" });
+        return `<div class="entry ${e.id === lastAdded ? "enter" : ""}"><div class="entry-main"><div class="entry-amt">${esc(fmt(e.amount, e.currency) + conv)}</div><div class="entry-sub">${esc(dt + (e.note ? " · " + e.note : ""))}</div></div><button data-del="${e.id}">${esc(t("del"))}</button></div>`;
+      }).join("");
+      box.querySelectorAll("button[data-del]").forEach(b => b.addEventListener("click", () => removeEntry(g, b.dataset.del)));
+    }
+    lastAdded = null;
+    renderHistory(g);
+  }
+
+  function renderConverter() {
+    const a = parseFloat($("cAmt").value), f = $("cFrom").value, to = $("cTo").value;
+    if (!(a >= 0)) { $("cOut").textContent = "—"; $("cRate").textContent = ""; return; }
+    $("cOut").textContent = fmt(convert(a, f, to), to);
+    const r = convert(1, f, to);
+    $("cRate").textContent = `1 ${f} = ${r.toLocaleString(lang || "en", { maximumFractionDigits: 4 })} ${to}`;
+  }
+
+  function render() { renderRates(); renderOverview(); renderChips(); renderActive(); renderConverter(); }
+
+  /* ---------- confetti ---------- */
+  function confetti() {
+    const colors = ["#7c9eff", "#ffc857", "#7cf59d", "#ff7bc4"];
+    for (let i = 0; i < 50; i++) {
+      const c = document.createElement("div");
+      c.className = "confetti";
+      c.style.left = Math.random() * 100 + "vw";
+      c.style.background = colors[i % colors.length];
+      c.style.animationDelay = Math.random() * .6 + "s";
+      c.style.animationDuration = 2 + Math.random() * 1.5 + "s";
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4600);
+    }
+  }
+
+  /* ---------- entries ---------- */
+  function addEntry(g, amount, cur, note) {
+    if (!(amount > 0)) return;
+    const before = goalPct(g);
+    const e = { id: uid(), amount, currency: cur, date: Date.now(), note: note || "" };
+    g.entries.push(e); lastAdded = e.id;
+    const after = goalPct(g);
+    let msg = t("added", { a: fmt(amount, cur) });
+    const hit = [75, 50, 25].find(m => before < m && after >= m);
+    if (after >= 100 && !g.celebrated) { g.celebrated = true; confetti(); buzz([30, 40, 60]); msg = t("reached"); }
+    else if (hit) { msg = t("milestone", { p: hit }); buzz(25); }
+    else buzz(10);
+    save(); render();
+    toast(msg, () => { g.entries = g.entries.filter(x => x.id !== e.id); if (goalPct(g) < 100) g.celebrated = false; save(); render(); });
+  }
+  function removeEntry(g, id) {
+    const idx = g.entries.findIndex(e => e.id === id); if (idx < 0) return;
+    const [e] = g.entries.splice(idx, 1);
+    if (goalPct(g) < 100) g.celebrated = false;
+    save(); render();
+    toast(t("entryRemoved"), () => { g.entries.splice(idx, 0, e); save(); render(); });
+  }
+
+  /* ---------- sheet ---------- */
+  function openSheet(html) {
+    $("sheetBody").innerHTML = html;
+    $("backdrop").classList.add("open"); $("sheet").classList.add("open");
+    document.body.classList.add("noscroll"); $("sheet").scrollTop = 0;
+  }
+  function closeSheet() {
+    $("backdrop").classList.remove("open"); $("sheet").classList.remove("open");
+    document.body.classList.remove("noscroll");
+  }
+  function twoStep(btn, action) {
+    let armed = false, tm; const label = btn.textContent;
+    btn.addEventListener("click", () => {
+      if (!armed) {
+        armed = true; btn.textContent = t("tapAgain"); btn.classList.add("armed"); buzz(15);
+        tm = setTimeout(() => { armed = false; btn.textContent = label; btn.classList.remove("armed"); }, 3000);
+      } else { clearTimeout(tm); action(); }
+    });
+  }
+
+  function openGoalSheet(g) {
+    const isNew = !g;
+    const d = g || { name: "", amount: "", currency: home, icon: "🎯", color: 0, deadline: "" };
+    let icon = d.icon, color = d.color;
+    const sheet = $("sheet");
+    const opts = CURRENCIES.map(c => `<option value="${c}">${c}</option>`).join("");
+    setPal(sheet, { color });
+    openSheet(`
+      <h3 class="sheet-title">${esc(isNew ? t("newGoal") : t("editGoal"))}</h3>
+      <label>${esc(t("icon"))}</label>
+      <div class="ico-grid" id="icoGrid">${ICONS.map(i => `<button type="button" class="ico-btn ${i === icon ? "sel" : ""}" data-i="${i}">${i}</button>`).join("")}</div>
+      <label>${esc(t("goalName"))}</label>
+      <div class="input-shell"><input type="text" id="fName" maxlength="40" placeholder="${esc(t("goalNamePh"))}" value="${esc(d.name)}" /></div>
+      <div class="row">
+        <div><label>${esc(t("targetAmount"))}</label><div class="input-shell"><input type="number" id="fAmt" inputmode="decimal" min="0" value="${d.amount}" /></div></div>
+        <div class="narrow"><label>${esc(t("currency"))}</label><div class="input-shell"><select id="fCur">${opts}</select></div></div>
+      </div>
+      <label>${esc(t("deadline"))} · ${esc(t("optional"))}</label>
+      <div class="input-shell"><input type="date" id="fDate" value="${d.deadline}" /></div>
+      <label>${esc(t("color"))}</label>
+      <div class="sw-row" id="swRow">${PALETTES.map((p, i) => `<button type="button" class="sw ${i === color ? "sel" : ""}" data-c="${i}" style="background:linear-gradient(135deg,${p[0]},${p[1]})"></button>`).join("")}</div>
+      <div class="btn-row"><button class="btn primary grow" id="fSave">${esc(isNew ? t("create") : t("saveChanges"))}</button><button class="btn" id="fCancel">${esc(t("cancel"))}</button></div>
+      ${isNew ? "" : `<div class="danger-zone"><div class="btn-row">
+        <button class="btn small" id="fDup">${esc(t("duplicate"))}</button>
+        <button class="btn small danger" id="fClear">${esc(t("clearEntries"))}</button>
+        <button class="btn small danger" id="fDel">${esc(t("deleteGoal"))}</button></div></div>`}
+    `);
+    $("fCur").value = d.currency;
+    $("icoGrid").querySelectorAll(".ico-btn").forEach(b => b.addEventListener("click", () => {
+      icon = b.dataset.i; $("icoGrid").querySelectorAll(".ico-btn").forEach(x => x.classList.toggle("sel", x === b));
+    }));
+    $("swRow").querySelectorAll(".sw").forEach(b => b.addEventListener("click", () => {
+      color = +b.dataset.c; $("swRow").querySelectorAll(".sw").forEach(x => x.classList.toggle("sel", x === b)); setPal(sheet, { color });
+    }));
+    $("fCancel").addEventListener("click", closeSheet);
+    $("fSave").addEventListener("click", () => {
+      const name = $("fName").value.trim(), amount = parseFloat($("fAmt").value);
+      if (!name || !(amount > 0)) { toast(t("invalid")); $("fName").focus(); return; }
+      const vals = { name, amount, currency: $("fCur").value, icon, color, deadline: $("fDate").value || "" };
+      if (isNew) {
+        const ng = normGoal({ ...vals, entries: [] });
+        state.goals.push(ng); state.active = ng.id; save(); closeSheet();
+        $("saveCurrency").value = ng.currency; render(); toast(t("goalCreated")); buzz(15);
+      } else {
+        Object.assign(g, vals); g.celebrated = goalPct(g) >= 100;
+        save(); closeSheet(); $("saveCurrency").value = g.currency; render(); toast(t("goalSaved"));
+      }
+    });
+    if (!isNew) {
+      $("fDup").addEventListener("click", () => {
+        const copy = normGoal({ ...JSON.parse(JSON.stringify(g)), id: uid(), name: (g.name + " ②").slice(0, 40), entries: [] });
+        state.goals.push(copy); state.active = copy.id; save(); closeSheet(); render(); toast(t("goalDuplicated"));
+      });
+      twoStep($("fClear"), () => {
+        const old = g.entries; g.entries = []; g.celebrated = false; save(); closeSheet(); render();
+        toast(t("entriesCleared"), () => { g.entries = old; g.celebrated = goalPct(g) >= 100; save(); render(); });
+      });
+      twoStep($("fDel"), () => {
+        const idx = state.goals.indexOf(g);
+        state.goals.splice(idx, 1);
+        state.active = state.goals.length ? state.goals[Math.min(idx, state.goals.length - 1)].id : null;
+        save(); closeSheet(); render();
+        toast(t("goalDeleted"), () => { state.goals.splice(idx, 0, g); state.active = g.id; save(); render(); });
+      });
+    }
+  }
+
+  /* ---------- backup ---------- */
+  function exportData() {
+    const blob = new Blob([JSON.stringify({ app: "pocket-wallet", v: 2, state }, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "pocket-wallet-backup.json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast(t("exported"));
+  }
+  function importData(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const j = JSON.parse(reader.result), s = j.state || j;
+        if (!s || !Array.isArray(s.goals)) throw new Error("bad");
+        const snapshot = JSON.parse(JSON.stringify(state));
+        state = { goals: s.goals.map(normGoal), active: null };
+        state.active = state.goals[0] ? state.goals[0].id : null;
+        save(); render(); toast(t("imported"), () => { state = snapshot; save(); render(); });
+      } catch (e) { toast(t("importBad")); }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ---------- theme / language ---------- */
+  function setTheme(next) { theme = next; document.documentElement.classList.toggle("light", theme === "light"); store.set("pw_theme", theme); }
+  function setLang(next) { lang = next; store.set("pw_lang", lang); applyTranslations(); if (window.paintPrefs) window.paintPrefs(); if (window.renderProducts) window.renderProducts(); render(); }
+
+  /* ---------- init ---------- */
+  const optionsHtml = CURRENCIES.map(c => `<option value="${c}">${c}</option>`).join("");
+  ["saveCurrency", "homeCur", "cFrom", "cTo"].forEach(id => { $(id).innerHTML = optionsHtml; });
+  $("homeCur").value = home; $("cFrom").value = "USD"; $("cTo").value = "THB";
+
+  $("addBtn").addEventListener("click", () => {
+    const g = activeGoal(); if (!g) return;
+    const amt = parseFloat($("saveAmount").value);
+    if (!(amt > 0)) { $("saveAmount").focus(); return; }
+    addEntry(g, amt, $("saveCurrency").value, $("saveNote").value.trim());
+    $("saveAmount").value = ""; $("saveNote").value = "";
+  });
+  $("saveAmount").addEventListener("keydown", e => { if (e.key === "Enter") $("addBtn").click(); });
+  $("manageBtn").addEventListener("click", () => { const g = activeGoal(); if (g) openGoalSheet(g); });
+  $("gearBtn").addEventListener("click", () => { const g = activeGoal(); if (g) openGoalSheet(g); });
+  $("emptyNewBtn").addEventListener("click", () => openGoalSheet(null));
+  $("backdrop").addEventListener("click", closeSheet);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+  $("refreshBtn").addEventListener("click", () => loadRates(true));
+  $("themeBtn").addEventListener("click", () => setTheme(theme === "dark" ? "light" : "dark"));
+  $("langQuick").addEventListener("change", e => setLang(e.target.value));
+  $("homeCur").addEventListener("change", e => { home = e.target.value; store.set("pw_home", home); renderOverview(); });
+  $("cAmt").addEventListener("input", renderConverter);
+  $("cFrom").addEventListener("change", renderConverter);
+  $("cTo").addEventListener("change", renderConverter);
+  $("cSwap").addEventListener("click", () => { const f = $("cFrom").value; $("cFrom").value = $("cTo").value; $("cTo").value = f; renderConverter(); });
+  $("exportBtn").addEventListener("click", exportData);
+  $("importBtn").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", e => { if (e.target.files[0]) importData(e.target.files[0]); e.target.value = ""; });
+  $("continueBtn").addEventListener("click", () => { setLang($("languageSelect").value); $("welcomeScreen").classList.remove("show"); });
+  $("languageSelect").addEventListener("change", e => { lang = e.target.value; applyTranslations(); });
+
+  setTheme(theme);
+  applyTranslations();
+  /* ---------- v5: haptics, streak, history, share, reset ---------- */
+  document.addEventListener("pointerdown", e => {
+    if (e.target.closest && e.target.closest("button, .chip, .qbtn, .ico-btn, .sw, input[type=checkbox]")) buzz(10);
+  }, true);
+
+  const dayKey = ts => { const d = new Date(ts); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); };
+  function streakOf() {
+    const days = new Set();
+    state.goals.forEach(g => g.entries.forEach(e => days.add(dayKey(e.date))));
+    const d = new Date();
+    if (!days.has(dayKey(d))) d.setDate(d.getDate() - 1);
+    let n = 0;
+    while (days.has(dayKey(d))) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+  function renderHistory(g) {
+    const box = $("historySvg");
+    if (!box) return;
+    const now = new Date(), months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ y: d.getFullYear(), m: d.getMonth(), label: d.toLocaleDateString(lang || "en", { month: "short" }), sum: 0 });
+    }
+    g.entries.forEach(e => {
+      const d = new Date(e.date);
+      const slot = months.find(x => x.y === d.getFullYear() && x.m === d.getMonth());
+      if (slot) slot.sum += convert(e.amount, e.currency, g.currency);
+    });
+    const max = Math.max(1, ...months.map(x => x.sum));
+    const bw = 36, gap = 14, base = 100;
+    const bars = months.map((x, i) => {
+      const h = x.sum > 0 ? Math.max(3, x.sum / max * 78) : 2, px = 8 + i * (bw + gap);
+      const val = x.sum > 0 ? Math.round(x.sum).toLocaleString(lang || "en") : "";
+      return `<rect x="${px}" y="${base - h}" width="${bw}" height="${h}" rx="10" fill="url(#hg)" class="hbar" style="animation-delay:${i * 80}ms"/>` +
+             `<text x="${px + bw / 2}" y="${base - h - 5}" text-anchor="middle" class="hval">${esc(val)}</text>` +
+             `<text x="${px + bw / 2}" y="116" text-anchor="middle" class="hlab">${esc(x.label)}</text>`;
+    }).join("");
+    box.innerHTML = `<svg viewBox="0 0 ${8 * 2 + 6 * (bw + gap) - gap}  124" width="100%" role="img" aria-label="${esc(t("history"))}">
+      <defs><linearGradient id="hg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--g1)"/><stop offset="1" style="stop-color:var(--g2)"/></linearGradient></defs>${bars}</svg>`;
+  }
+
+  async function shareGoal() {
+    const g = activeGoal(); if (!g) return;
+    const text = t("shareText", { n: g.icon + " " + g.name, p: Math.round(goalPct(g)), a: fmt(goalTotal(g), g.currency), t: fmt(g.amount, g.currency) });
+    if (navigator.share) { try { await navigator.share({ title: "Pocket Wallet", text }); return; } catch (e) { if (e.name === "AbortError") return; } }
+    try { await navigator.clipboard.writeText(text); toast(t("copied")); } catch (e) { toast(text.slice(0, 90)); }
+  }
+  $("shareBtn").addEventListener("click", shareGoal);
+
+  const paintPrefs = () => { $("hapBtn").textContent = hapticsOn() ? t("hapOn") : t("hapOff"); };
+  window.paintPrefs = paintPrefs;
+  $("hapBtn").addEventListener("click", () => { store.set("pw_haptics", !hapticsOn()); paintPrefs(); buzz(20); });
+  paintPrefs();
+  twoStep($("resetAll"), () => {
+    state = { goals: [], active: null }; save(); render();
+    toast(t("resetDone"));
+  });
+
+  /* ---------- v6: shopping list ---------- */
+  let products = store.get("pw_products", []);
+  if (!Array.isArray(products)) products = [];
+  products = products.filter(p => p && typeof p.url === "string").map(p => ({
+    id: String(p.id || uid()), name: String(p.name || "Item").slice(0, 60), url: p.url,
+    price: +p.price > 0 ? +p.price : 0, currency: CURRENCIES.includes(p.currency) ? p.currency : "USD", updated: +p.updated || 0
+  }));
+  const saveProducts = () => store.set("pw_products", products);
+  const safeUrl = u => { try { const x = new URL(u); return (x.protocol === "https:" || x.protocol === "http:") ? x.href : null; } catch (e) { return null; } };
+
+  $("pCur").innerHTML = optionsHtml; $("pCur").value = home;
+  $("pSearchBtn").addEventListener("click", () => {
+    const q = $("pSearch").value.trim();
+    if (!q) { toast(t("shopNeedQuery")); return; }
+    window.open("https://duckduckgo.com/?q=" + encodeURIComponent(q + " price"), "_blank", "noopener");
+  });
+  $("pSearch").addEventListener("keydown", e => { if (e.key === "Enter") $("pSearchBtn").click(); });
+  $("pAddBtn").addEventListener("click", () => {
+    const name = $("pName").value.trim(), url = safeUrl($("pUrl").value.trim()), price = parseFloat($("pPrice").value);
+    if (!name || !url) { toast(t("shopNeedLink")); return; }
+    products.push({ id: uid(), name, url, price: price > 0 ? price : 0, currency: $("pCur").value, updated: price > 0 ? Date.now() : 0 });
+    saveProducts(); $("pName").value = ""; $("pUrl").value = ""; $("pPrice").value = "";
+    renderProducts(); toast(t("productSaved")); buzz(15);
+  });
+
+  function renderProducts() {
+    const box = $("productList");
+    if (!products.length) { box.innerHTML = `<div class="muted" style="margin-top:8px;">${esc(t("noProducts"))}</div>`; return; }
+    box.innerHTML = products.map(p => `
+      <div class="prod" data-id="${esc(p.id)}">
+        <div class="entry-amt">${esc(p.name)}</div>
+        <div class="entry-sub">${p.price ? esc(fmt(p.price, p.currency)) + " · " + esc(t("lastPrice", { t: relTime(p.updated) })) : esc(t("noPrice"))}</div>
+        <div class="prod-row">
+          <a class="qbtn" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(t("openLink"))}</a>
+          <input type="number" inputmode="decimal" min="0" step="any" class="pp" placeholder="${esc(t("priceLabel"))}" />
+          <button class="qbtn" data-act="upd">${esc(t("updatePrice"))}</button>
+        </div>
+        <div class="prod-row">
+          ${activeGoal() ? `<button class="qbtn" data-act="target">${esc(t("setTarget"))}</button>` : ""}
+          <button class="qbtn" data-act="del">${esc(t("del"))}</button>
+        </div>
+      </div>`).join("");
+    box.querySelectorAll(".prod").forEach(el => {
+      const p = products.find(x => x.id === el.dataset.id);
+      el.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => {
+        const act = b.dataset.act;
+        if (act === "upd") {
+          const v = parseFloat(el.querySelector(".pp").value);
+          if (!(v > 0)) { toast(t("priceInvalid")); return; }
+          p.price = v; p.updated = Date.now(); saveProducts(); renderProducts(); toast(t("priceUpdated"));
+        }
+        if (act === "target") {
+          const cg = activeGoal();
+          if (!cg || !(p.price > 0)) { toast(t("priceInvalid")); return; }
+          cg.amount = p.price; cg.currency = p.currency; cg.celebrated = goalPct(cg) >= 100;
+          save(); render(); toast(t("targetSet"));
+        }
+        if (act === "del") {
+          const idx = products.indexOf(p); products.splice(idx, 1); saveProducts(); renderProducts();
+          toast(t("productDeleted"), () => { products.splice(idx, 0, p); saveProducts(); renderProducts(); });
+        }
+      }));
+    });
+  }
+  window.renderProducts = renderProducts;
+  renderProducts();
+
+  const g0 = activeGoal(); if (g0) $("saveCurrency").value = g0.currency;
+  document.querySelectorAll("main .card, main .rate-pill").forEach((c, i) => { c.style.animationDelay = (i * 60) + "ms"; });
+  render();
+  loadRates(false);
+
+  setInterval(() => loadRates(false), AUTO_REFRESH);
+  setInterval(renderRates, 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && (!rates.fetched || Date.now() - rates.fetched > 60000)) loadRates(false); });
+  window.addEventListener("online", () => loadRates(false));
+
+  setTimeout(() => {
+    $("loadingScreen").classList.add("fade");
+    setTimeout(() => $("loadingScreen").remove(), 500);
+    if (!lang) $("welcomeScreen").classList.add("show");
+  }, 800);
+});
+</script>
+</body>
+</html>
