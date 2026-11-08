@@ -295,6 +295,51 @@
   .progress-circle circle.bar, .home-ring-wrap circle.bar { transition: stroke-dashoffset .6s cubic-bezier(.2,.8,.2,1), stroke-width .4s ease; }
   /* v28: accent-coloured bars and chips drift slightly, like the buttons */
   .chip-bar > i, .home-goal .bar i { background-size: 200% 200%; animation: gradDrift 3s ease-in-out infinite; }
+  /* v31: tap a QR code to view it full screen */
+  .qr-item img { cursor: zoom-in; }
+  .qr-full { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(0,0,0,.82); opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .qr-full.open { opacity: 1; pointer-events: auto; }
+  .qr-full img { width: min(92vw, 420px); max-height: 80vh; object-fit: contain; border-radius: 18px; background: #fff; transform: scale(.92); transition: transform .3s cubic-bezier(.2,1.1,.3,1); }
+  .qr-full.open img { transform: scale(1); }
+  /* v32: deadline tags on goal cards */
+  .tag { align-self: flex-start; font-size: 11px; padding: 3px 9px; border-radius: 999px; background: var(--frost); border: 1px solid var(--card-border); color: var(--text-soft); }
+  .tag.ok { color: var(--accent-3); }
+  .tag.late { color: var(--danger); }
+  /* v34.1: search box styled like the rest of the app */
+  .search-shell { margin-top: 12px; position: relative; }
+  .search-shell::before { content: ""; position: absolute; left: 16px; top: 50%; width: 13px; height: 13px; transform: translateY(-62%); border-radius: 50%; border: 2px solid var(--text-soft); pointer-events: none; }
+  .search-shell::after { content: ""; position: absolute; left: 27px; top: calc(50% + 6px); width: 6px; height: 2px; background: var(--text-soft); transform: rotate(45deg); pointer-events: none; }
+  #goalSearch { width: 100%; min-height: 42px; border-radius: 999px; border: 1px solid var(--field-border); background: var(--frost); color: var(--text); font-family: inherit; font-size: 16px; padding: 10px 16px 10px 40px; outline: none; appearance: none; -webkit-appearance: none; transition: border-color .2s, box-shadow .2s; }
+  #goalSearch::placeholder { color: var(--muted); }
+  #goalSearch:focus { border-color: var(--g1); box-shadow: 0 0 0 1px var(--g1); }
+  #goalSearch::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; height: 14px; width: 14px; border-radius: 50%; background: var(--text-soft); cursor: pointer; }
+  /* v35: animation speed setting */
+  html.anim-off *, html.anim-off *::before, html.anim-off *::after { animation: none !important; transition: none !important; }
+  html.anim-fast *, html.anim-fast *::before, html.anim-fast *::after { transition-duration: .15s !important; }
+  /* v36: first-visit tutorial */
+  .tour { position: fixed; inset: 0; z-index: 85; display: flex; align-items: flex-end; justify-content: center; padding: 16px; background: rgba(0,0,0,.55); opacity: 0; transition: opacity .25s; }
+  .tour.open { opacity: 1; }
+  .tour-card { width: 100%; max-width: 400px; border-radius: 24px; padding: 18px; background: var(--sheet-bg, rgba(18,20,36,.97)); border: 1px solid var(--card-border); box-shadow: 0 20px 40px rgba(0,0,0,.35); transform: translateY(30px); transition: transform .35s cubic-bezier(.2,.9,.25,1); }
+  .tour.open .tour-card { transform: none; }
+  .tour-count { font-size: 12px; }
+  .tour-title { margin: 4px 0 6px; font-size: 18px; }
+  .tour-body { margin: 0; font-size: 14px; color: var(--text-soft); line-height: 1.45; }
+  .tour-dots { display: flex; gap: 6px; margin: 14px 0 12px; }
+  .tour-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--track); transition: background .2s; }
+  .tour-dots i.on { background: var(--g1); }
+  /* v37: water-filled overview card */
+  #overviewCard > *:not(.water) { position: relative; z-index: 1; }
+  .water { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; z-index: 0; }
+  .water-body { --lvl: 0%; --tilt: 0deg; position: absolute; left: -60%; width: 220%; top: calc(100% - var(--lvl)); bottom: -100%; background: linear-gradient(180deg, var(--g1), var(--g2)); opacity: .28; transform: rotate(var(--tilt)); transform-origin: 50% 0; transition: top 1.2s cubic-bezier(.2,.8,.2,1), transform .35s ease-out; }
+  /* two wave crests with different lengths and heights, drawn as masks so they take the goal colours */
+  .water-body::before, .water-body::after { content: ""; position: absolute; left: 0; right: 0; background: linear-gradient(90deg, var(--g1), var(--g2)); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 170 16' preserveAspectRatio='none'%3E%3Cpath d='M0 9 Q22 1 42 9 T88 8 T124 12 T170 9 V16 H0Z'/%3E%3C/svg%3E") repeat-x; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 170 16' preserveAspectRatio='none'%3E%3Cpath d='M0 9 Q22 1 42 9 T88 8 T124 12 T170 9 V16 H0Z'/%3E%3C/svg%3E") repeat-x; }
+  .water-body::before { top: -15px; height: 16px; -webkit-mask-size: 170px 16px; mask-size: 170px 16px; animation: waveRoll 3.4s linear infinite; }
+  .water-body::after { -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 10' preserveAspectRatio='none'%3E%3Cpath d='M0 5 Q13 0 27 5 T52 3 T80 7 T110 5 V10 H0Z'/%3E%3C/svg%3E") repeat-x; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 10' preserveAspectRatio='none'%3E%3Cpath d='M0 5 Q13 0 27 5 T52 3 T80 7 T110 5 V10 H0Z'/%3E%3C/svg%3E") repeat-x; top: -9px; height: 10px; opacity: .45; -webkit-mask-size: 110px 10px; mask-size: 110px 10px; animation: waveRollBack 2.6s linear infinite; }
+  @keyframes waveRoll { from { -webkit-mask-position: 0 0; mask-position: 0 0; } to { -webkit-mask-position: 170px 0; mask-position: 170px 0; } }
+  @keyframes waveRollBack { from { -webkit-mask-position: 0 0; mask-position: 0 0; } to { -webkit-mask-position: -110px 0; mask-position: -110px 0; } }
+  html.anim-off .water-body, html.anim-off .water-body::before { transition: none !important; animation: none !important; }
+  /* v38: live water canvas */
+  #waterCanvas { position: absolute; left: 0; top: 0; }
 </style>
 </head>
 <body>
@@ -330,7 +375,7 @@
           <select id="langQuick" aria-label="Language">
             <option value="en">EN</option><option value="th">TH</option><option value="es">ES</option><option value="fr">FR</option><option value="de">DE</option>
           </select>
-          <button id="themeBtn" class="btn" data-i18n="theme">Theme</button>
+          <button id="settingsBtn" class="btn" type="button">⚙️ Settings</button>
         </div>
       </header>
 
@@ -342,6 +387,7 @@
         </div>
 
         <section class="card hidden" id="overviewCard">
+          <div class="water" aria-hidden="true"><canvas id="waterCanvas"></canvas></div>
           <div class="ov-top">
             <div>
               <h3 style="margin-bottom:2px;" data-i18n="overview">Overview</h3>
@@ -366,6 +412,7 @@
             <div class="stat"><div class="k" id="ovK4"></div><div class="v" id="ovCount">—</div></div>
           </div>
           <div class="ov-meta"><span class="muted" id="ovGoals"></span><span class="muted" id="ovNext"></span><span class="muted ov-streak" id="ovStreak"></span></div>
+          <div class="search-shell"><input type="search" id="goalSearch" autocomplete="off" enterkeyhint="search" /></div>
           <h3 style="margin-top:16px;" data-i18n="goals">Your goals</h3>
           <div class="home-goals" id="homeGoals"></div>
         </section>
@@ -376,8 +423,9 @@
         </section>
 
         <div id="activeArea" class="hidden">
-          <div class="btn-row" style="margin:0 0 10px;"><button class="btn small" id="homeBtn" type="button">← Home</button></div>
+          <div class="btn-row" style="margin:0 0 10px;"><button class="btn small" id="homeBtn" type="button">← Home</button><button class="btn small" id="shortBtn" type="button"></button></div>
           <section class="card ring-card" id="ringCard">
+            <div class="tag late hidden" id="ringPace"></div>
             <button class="icon-btn gear" id="gearBtn" aria-label="Manage goal">⚙️</button>
             <div class="circle-wrapper">
               <svg viewBox="0 0 120 120" class="progress-circle">
@@ -556,6 +604,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const PALETTES = [["#7c9eff", "#ff7bc4"], ["#7cf59d", "#7c9eff"], ["#ffc857", "#ff7bc4"], ["#ff8a7c", "#ffc857"], ["#b57cff", "#7c9eff"], ["#5ee7df", "#7cf59d"], ["#ff5e7e", "#ffb347"], ["#4ade80", "#06b6d4"], ["#f472b6", "#a78bfa"], ["#fb923c", "#facc15"], ["#38bdf8", "#818cf8"], ["#94a3b8", "#e2e8f0"]];
   const CIRC = 339.292;
   const AUTO_REFRESH = 5 * 60 * 1000;
+  const defColor = () => { const v = store.get("pw_defcolor", 1); return Number.isInteger(v) && PALETTES[v] ? v : 1; };
+  const animMode = () => store.get("pw_anim", "normal");
+  const applyAnim = m => { const h = document.documentElement.classList; h.toggle("anim-off", m === "off"); h.toggle("anim-fast", m === "fast"); };
 
   /* ---------- state ---------- */
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -568,6 +619,7 @@ document.addEventListener("DOMContentLoaded", () => {
       currency: CURRENCIES.includes(g.currency) ? g.currency : "GBP",
       icon: (typeof g.icon === "string" && g.icon.trim() && [...g.icon.trim()].length <= 8) ? g.icon.trim() : "🎯",
       color: Number.isInteger(g.color) && PALETTES[g.color] ? g.color : 1,
+      created: +g.created > 0 ? +g.created : Date.now(),
       deadline: /^\d{4}-\d\d-\d\d$/.test(g.deadline || "") ? g.deadline : "",
       entries: (Array.isArray(g.entries) ? g.entries : []).map(e => ({
         id: String(e.id || uid()), amount: +e.amount || 0,
@@ -618,6 +670,18 @@ document.addEventListener("DOMContentLoaded", () => {
       rateChart: "Exchange rate history", chartFail: "Couldn’t load rate history. Tap Refresh to try again.",
       customEmoji: "Custom emoji (optional)",
       homeDone: "Goals done", homeRemain: "Remaining", homeEntries: "Entries", homeCount: "Goals", homeComplete: "complete",
+      daysLeftN: "{n} days left", dueToday: "Due today", onTrack: "On track", behindPace: "Behind pace",
+      goalSearchPh: "Search goals and notes", noResults: "No matches",
+      settingsTitle: "Settings", appearance: "Appearance", darkLbl: "Dark", lightLbl: "Light", animSpeed: "Animation speed", animOff: "Off", animNormal: "Normal", animFast: "Fast",
+      hapticsRow: "Haptic feedback", airplane: "Airplane mode", airplaneSub: "Stops live exchange-rate downloads until you turn it off.", airplaneOn: "Airplane mode is on",
+      defColor: "Default colour for new goals", tiltBtn: "Enable tilt", tiltOn: "Tilt is on", tiltNo: "Tilt isn't available here. Check that motion access is allowed for this site.", tiltDenied: "Motion access was turned down", waveDir: "Wave direction", waveL: "Left", waveR: "Right", shortOn: "★ Shortcut", shortOff: "☆ Set as shortcut", done: "Done",
+      tourNext: "Next", tourSkip: "Skip", tourDone: "Got it", replayTour: "Replay tutorial",
+      tourT1: "Your overview", tourB1: "Home shows every goal, your total saved, and an overall progress ring.",
+      tourT2: "Open a goal", tourB2: "Tap a goal to open it. Swipe left or right to move between goals.",
+      tourT3: "Add savings", tourB3: "Type an amount and tap Add. Scan bill reads the amount from a photo of a note.",
+      tourT4: "Deadlines", tourB4: "Goals with a deadline show the days left and whether you're on track.",
+      tourT5: "Shortcuts and gestures", tourB5: "Star a goal as your shortcut. At the top of a goal, swipe up to open it. Swipe down to return to Home.",
+      tourT6: "Settings", tourB6: "Change the theme, animation speed, haptics and airplane mode in Settings.",
       daysUnit: "{n}d"
     },
     th: {
@@ -746,8 +810,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const goalPct = g => g.amount > 0 ? Math.min(100, goalTotal(g) / g.amount * 100) : 0;
   function daysLeft(g) {
     if (!g.deadline) return null;
-    const end = new Date(g.deadline + "T23:59:59").getTime();
-    return Math.ceil((end - Date.now()) / 864e5);
+    // calendar days: a deadline 3 dates from today is 3 days left, and today is 0
+    const [y, m, d] = g.deadline.split("-").map(Number);
+    const now = new Date();
+    return Math.round((new Date(y, m - 1, d) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 864e5);
   }
   function tween(el, to, format, dur = 700) {
     if (!el) return;
@@ -812,6 +878,7 @@ document.addEventListener("DOMContentLoaded", () => {
     store.set("pw_rates", { table, fetched: now, updated: rates.updated });
   }
   async function loadRates(manual) {
+    if (store.get("pw_offline", false)) { if (manual) toast(t("airplaneOn")); return; }
     if (rates.loading) return;
     rates.loading = true; renderRates();
     let ok = false;
@@ -846,6 +913,7 @@ document.addEventListener("DOMContentLoaded", () => {
     $("homeBar").style.strokeDashoffset = String(339.292 * (1 - pct / 100));
     $("homeBar").style.strokeWidth = String(10 * Math.min(1, pct / 4));
     tween($("ovPct"), Math.round(pct), v => Math.round(v) + "%");
+    setWater(pct / 100);
     tween($("ovTotal"), total, v => fmt(v, home));
     $("ovOf").textContent = t("of") + " " + fmt(target, home);
     $("ovCoreSub").textContent = t("homeComplete");
@@ -861,18 +929,39 @@ document.addEventListener("DOMContentLoaded", () => {
     $("ovNext").textContent = next ? "· " + t("nextDeadline", { n: next.n, d: next.d }) : "";
     const st = streakOf();
     $("ovStreak").textContent = st ? t("streak", { n: st }) : t("noStreak");
-    $("homeGoals").innerHTML = state.goals.map(g => {
+    const q = $("goalSearch").value.trim().toLowerCase();
+    $("goalSearch").placeholder = t("goalSearchPh");
+    const goalCard = g => {
       const p = goalPct(g), pal = PALETTES[g.color];
       return `<button class="home-goal" type="button" data-id="${g.id}" style="--g1:${pal[0]};--g2:${pal[1]}">
         <span class="top"><span>${g.icon} ${esc(g.name)}</span><span>${Math.round(p)}%</span></span>
         <span class="sm">${esc(fmt(goalTotal(g), g.currency))} / ${esc(fmt(g.amount, g.currency))}</span>
-        <span class="bar"><i style="width:${p}%"></i></span></button>`;
-    }).join("");
+        <span class="bar"><i style="width:${p}%"></i></span>${paceTag(g)}</button>`;
+    };
+    let html;
+    if (!q) {
+      html = state.goals.map(goalCard).join("");
+    } else {
+      // matching goal names, then savings entries whose note matches (newest first)
+      const hits = [];
+      state.goals.forEach(g => g.entries.forEach(en => { if ((en.note || "").toLowerCase().includes(q)) hits.push({ g, en }); }));
+      hits.sort((x, y) => (+y.en.date || 0) - (+x.en.date || 0));
+      html = state.goals.filter(g => g.name.toLowerCase().includes(q)).map(goalCard).join("");
+      html += hits.map(({ g, en }) => {
+        const pal = PALETTES[g.color], when = new Date(+en.date || 0).toLocaleDateString(lang || "en", { day: "numeric", month: "short", year: "numeric" });
+        return `<button class="home-goal" type="button" data-id="${g.id}" style="--g1:${pal[0]};--g2:${pal[1]}">
+          <span class="top"><span>${g.icon} ${esc(en.note)}</span><span>${esc(fmt(en.amount, en.currency))}</span></span>
+          <span class="sm">${esc(g.name)} · ${esc(when)}</span></button>`;
+      }).join("");
+      if (!html) html = `<div class="muted">${esc(t("noResults"))}</div>`;
+    }
+    $("homeGoals").innerHTML = html;
     $("homeGoals").querySelectorAll(".home-goal").forEach(b => b.addEventListener("click", () => openGoal(b.dataset.id)));
   }
 
   /* interruptible slide-in: starts from wherever the element currently is, so a new one takes over smoothly */
   function slideIn(el, fromY) {
+    if (document.documentElement.classList.contains("anim-off")) return;
     const cs = getComputedStyle(el);
     const fromT = cs.transform !== "none" ? cs.transform : `translateY(${fromY}px)`;
     const fromO = cs.opacity !== "1" ? cs.opacity : 0.35;
@@ -882,9 +971,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* interruptible pop: a new one replaces any still running, starting from where it is */
   function bump(el) {
+    if (document.documentElement.classList.contains("anim-off")) return;
     el.getAnimations().forEach(a => a.cancel());
     el.animate([{ transform: "scale(.96)" }, { transform: "scale(1)" }], { duration: 420, easing: "cubic-bezier(.2,1.1,.3,1)" });
   }
+
+  /* pace: saved so far vs the target divided by the days left */
+  function paceState(g) {
+    const d = daysLeft(g);
+    if (d === null || goalPct(g) >= 100) return null;
+    if (d < 0) return "overdue";
+    // on track once what you've saved covers the target spread evenly over the days left
+    // (e.g. 90 with 3 days left needs 30 saved; 29.99 is behind)
+    return goalTotal(g) + 1e-9 >= g.amount / Math.max(1, d) ? "ok" : "behind";
+  }
+
+  /* deadline tag for the home page */
+  function paceTag(g) {
+    const st = paceState(g), d = daysLeft(g);
+    if (st === null) return "";
+    if (st === "overdue") return `<span class="tag late">${esc(t("overdue"))}</span>`;
+    const left = d === 0 ? t("dueToday") : t("daysLeftN", { n: d });
+    return `<span class="tag ${st === "ok" ? "ok" : "late"}">${esc(left)} · ${esc(st === "ok" ? t("onTrack") : t("behindPace"))}</span>`;
+  }
+
+  /* QR codes open full screen; tap anywhere or press Escape to close */
+  const qrFull = document.createElement("div");
+  qrFull.className = "qr-full"; qrFull.setAttribute("aria-hidden", "true");
+  qrFull.innerHTML = '<img alt="" />';
+  document.body.appendChild(qrFull);
+  const closeQr = () => qrFull.classList.remove("open");
+  qrFull.addEventListener("click", closeQr);
+  document.querySelectorAll(".qr-item img").forEach(img => img.addEventListener("click", () => {
+    qrFull.querySelector("img").src = img.src;
+    qrFull.querySelector("img").alt = img.alt;
+    qrFull.classList.add("open");
+    buzz(8);
+  }));
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeQr(); });
 
   function openGoal(id) {
     state.active = id; save(); view = "goal";
@@ -898,6 +1022,39 @@ document.addEventListener("DOMContentLoaded", () => {
     const br = box.getBoundingClientRect(), ar = a.getBoundingClientRect();
     box.scrollBy({ left: (ar.left + ar.width / 2) - (br.left + br.width / 2), behavior: "smooth" });
   }
+
+  /* stop the browser's pull-to-refresh when pulling down at the top of a goal page (that's what reloaded the app) */
+  let pullY0 = 0;
+  document.addEventListener("touchstart", e => { pullY0 = e.touches[0].clientY; }, { passive: true });
+  document.addEventListener("touchmove", e => {
+    if (view === "goal" && window.scrollY <= 0 && !$("sheet").classList.contains("open") && e.touches[0].clientY - pullY0 > 0 && e.cancelable) e.preventDefault();
+  }, { passive: false });
+
+  /* manage-goal sheet: drag its top down to close it */
+  (() => {
+    const sh = $("sheet");
+    let dragging = false, y0 = 0, dy = 0;
+    sh.addEventListener("touchstart", e => {
+      const r = sh.getBoundingClientRect();
+      dragging = sh.scrollTop <= 0 && (!!e.target.closest(".grab") || e.touches[0].clientY - r.top < 90);
+      y0 = e.touches[0].clientY; dy = 0;
+    }, { passive: true });
+    sh.addEventListener("touchmove", e => {
+      if (!dragging) return;
+      dy = Math.max(0, e.touches[0].clientY - y0);
+      sh.style.transition = "none";
+      sh.style.transform = `translate(-50%, ${dy}px)`;
+      if (dy > 0 && e.cancelable) e.preventDefault();
+    }, { passive: false });
+    sh.addEventListener("touchend", () => {
+      if (!dragging) return;
+      dragging = false;
+      const close = dy > 110;
+      sh.style.transition = ""; // hand back to the normal spring
+      sh.style.transform = "";
+      if (close) closeSheet();
+    });
+  })();
 
   /* on the home page, a sideways swipe opens the most recently used goal */
   (() => {
@@ -928,6 +1085,10 @@ document.addEventListener("DOMContentLoaded", () => {
     av.addEventListener("touchend", e => {
       if (skip || view !== "goal" || e.changedTouches.length !== 1) return;
       const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+      // at the top of a goal page, a quick long swipe up opens the shortcut goal
+      if (dy < -100 && Math.abs(dx) < Math.abs(dy) / 2 && Date.now() - st < 600 && window.scrollY <= 0 && state.shortcut && state.shortcut !== state.active && state.goals.some(g => g.id === state.shortcut)) {
+        openGoal(state.shortcut); slideIn(av, 28); buzz(8); return;
+      }
       // a quick, long swipe down anywhere on the goal goes back to the overview
       if (dy > 100 && Math.abs(dx) < Math.abs(dy) / 2 && Date.now() - st < 600 && window.scrollY <= 0) {
         view = "home"; render(); window.scrollTo({ top: 0 }); slideIn($("overviewCard"), -28); buzz(8); return;
@@ -983,6 +1144,12 @@ document.addEventListener("DOMContentLoaded", () => {
     setPal($("rChart").closest(".card"), g || {});
     if (!g) return;
     setPal($("activeArea"), g);
+    const isShort = state.shortcut === g.id;
+    $("shortBtn").textContent = t(isShort ? "shortOn" : "shortOff");
+    $("shortBtn").classList.toggle("primary", isShort);
+    const behind = paceState(g) === "behind";
+    $("ringPace").classList.toggle("hidden", !behind);
+    $("ringPace").textContent = behind ? t("behindPace") : "";
     const total = goalTotal(g), p = goalPct(g), remain = Math.max(0, g.amount - total);
     $("circleBar").style.strokeDashoffset = CIRC * (1 - p / 100);
     $("circleBar").style.strokeWidth = String(10 * Math.min(1, p / 4)); // thins out smoothly below 4%, so the round end shrinks away
@@ -1111,7 +1278,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function openGoalSheet(g) {
     const isNew = !g;
-    const d = g || { name: "", amount: "", currency: home, icon: "🎯", color: 1, deadline: "" };
+    const d = g || { name: "", amount: "", currency: home, icon: "🎯", color: defColor(), deadline: "" };
     let icon = d.icon, color = d.color;
     const sheet = $("sheet");
     const opts = CURRENCIES.map(c => `<option value="${c}">${c}</option>`).join("");
@@ -1259,15 +1426,165 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
   $("homeBtn").addEventListener("click", () => { view = "home"; render(); window.scrollTo({ top: 0 }); });
+  $("shortBtn").addEventListener("click", () => { const g = activeGoal(); if (!g) return; state.shortcut = state.shortcut === g.id ? null : g.id; save(); render(); buzz(10); });
   $("manageBtn").addEventListener("click", () => { const g = activeGoal(); if (g) openGoalSheet(g); });
   $("gearBtn").addEventListener("click", () => { const g = activeGoal(); if (g) openGoalSheet(g); });
   $("emptyNewBtn").addEventListener("click", () => openGoalSheet(null));
   $("backdrop").addEventListener("click", closeSheet);
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
   $("refreshBtn").addEventListener("click", () => loadRates(true));
-  $("themeBtn").addEventListener("click", () => setTheme(theme === "dark" ? "light" : "dark"));
+  /* water: a live, randomly generated surface drawn on a canvas; the level follows the progress and the surface tilts with the phone */
+  let setWater = () => {};
+  let enableTilt = async () => {};
+  (() => {
+    const card = $("overviewCard"), cv = $("waterCanvas"), ctx = cv.getContext("2d");
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const mk = () => ({ a: rnd(1.5, 4.5), k: 2 * Math.PI / rnd(80, 240), w: rnd(0.5, 1.3), ph: rnd(0, 6.28) });
+    const waves = [mk(), mk(), mk()], goals = [mk(), mk(), mk()];
+    let W = 0, H = 0, dpr = 1, target = 0, level = 0, tiltT = 0, tilt = 0, nextNew = 0, last = performance.now();
+    const resize = () => {
+      W = card.clientWidth; H = card.clientHeight; dpr = Math.min(2, window.devicePixelRatio || 1);
+      cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
+    };
+    setWater = p => { target = Math.max(0, Math.min(1, p)); };
+    window.addEventListener("resize", resize);
+    const still = () => document.documentElement.classList.contains("anim-off");
+    const frame = now => {
+      requestAnimationFrame(frame);
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      if (!W) resize();
+      if (card.classList.contains("hidden") || document.hidden) return;
+      if (now > nextNew) { for (let i = 0; i < goals.length; i++) goals[i] = mk(); nextNew = now + rnd(3500, 6500); }
+      const moving = !still();
+      waves.forEach((w, i) => {
+        const g = goals[i];
+        w.a += (g.a - w.a) * 0.02; w.k += (g.k - w.k) * 0.02;
+        // waves travel towards the chosen side (Settings > Wave direction)
+        if (moving) w.ph += (store.get("pw_wavedir", "right") === "left" ? 1 : -1) * w.w * dt;
+      });
+      level += (target - level) * 0.05;
+      tilt += (tiltT - tilt) * 0.12;
+      draw();
+    };
+    const draw = () => {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      const cs = getComputedStyle(card);
+      const g1 = cs.getPropertyValue("--g1").trim() || "#7c9eff", g2 = cs.getPropertyValue("--g2").trim() || "#ff7bc4";
+      const base = H * (1 - level);
+      const yAt = x => base + waves.reduce((s, w) => s + w.a * Math.sin(w.k * x + w.ph), 0);
+      const trace = () => {
+        ctx.beginPath();
+        for (let x = -W * 0.5; x <= W * 1.5; x += 3) { const y = yAt(x); if (x === -W * 0.5) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+      };
+      ctx.save();
+      ctx.translate(W / 2, H / 2); ctx.rotate(tilt * Math.PI / 180); ctx.translate(-W / 2, -H / 2);
+      const grad = ctx.createLinearGradient(0, base - 20, 0, H);
+      grad.addColorStop(0, g1); grad.addColorStop(1, g2);
+      trace(); ctx.lineTo(W * 1.5, H * 2); ctx.lineTo(-W * 0.5, H * 2); ctx.closePath();
+      ctx.globalAlpha = 0.3; ctx.fillStyle = grad; ctx.fill();
+      trace(); ctx.globalAlpha = 0.6; ctx.strokeStyle = g1; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.restore();
+    };
+    let gotOrientation = false, gotMotion = false;
+    window.addEventListener("deviceorientation", e => {
+      if (e.gamma == null) return;
+      gotOrientation = true;
+      tiltT = Math.max(-25, Math.min(25, -e.gamma * 0.7));
+    });
+    window.addEventListener("devicemotion", e => {
+      const g = e.accelerationIncludingGravity;
+      if (!g || g.x == null) return;
+      gotMotion = true;
+      if (gotOrientation) return; // gyroscope wins; gravity is the fallback
+      tiltT = Math.max(-25, Math.min(25, -(g.x / 9.8) * 45));
+    });
+    // iOS only allows the prompt from a direct tap, so the Settings button is the reliable way in
+    enableTilt = async () => {
+      try {
+        const DO = window.DeviceOrientationEvent, DM = window.DeviceMotionEvent;
+        if (!DO && !DM) { toast(t("tiltNo")); return; }
+        let ok = true;
+        if (DO && typeof DO.requestPermission === "function") ok = (await DO.requestPermission()) === "granted";
+        if (DM && typeof DM.requestPermission === "function") ok = (await DM.requestPermission()) === "granted" && ok;
+        if (!ok) { toast(t("tiltDenied")); return; }
+        setTimeout(() => { toast(gotOrientation || gotMotion ? t("tiltOn") : t("tiltNo")); }, 1500);
+      } catch (e) { toast(t("tiltNo")); }
+    };
+    resize();
+    requestAnimationFrame(frame);
+  })();
+
+  /* first-visit tutorial: a few cards you can skip; shown once unless replayed from Settings */
+  function startTour(force) {
+    if (!force && store.get("pw_tour_done", false)) return;
+    if (document.querySelector(".tour")) return;
+    const steps = [1, 2, 3, 4, 5, 6];
+    let i = 0;
+    const ov = document.createElement("div");
+    ov.className = "tour";
+    ov.innerHTML = `<div class="tour-card" role="dialog" aria-modal="true">
+      <div class="muted tour-count"></div><h3 class="tour-title"></h3><p class="tour-body"></p>
+      <div class="tour-dots">${steps.map(() => "<i></i>").join("")}</div>
+      <div class="btn-row"><button class="btn small" type="button" data-skip></button><button class="btn primary grow" type="button" data-next></button></div></div>`;
+    document.body.appendChild(ov);
+    const close = () => { store.set("pw_tour_done", true); ov.classList.remove("open"); setTimeout(() => ov.remove(), 260); };
+    const show = () => {
+      const n = steps[i];
+      ov.querySelector(".tour-count").textContent = `${i + 1} / ${steps.length}`;
+      ov.querySelector(".tour-title").textContent = t("tourT" + n);
+      ov.querySelector(".tour-body").textContent = t("tourB" + n);
+      ov.querySelectorAll(".tour-dots i").forEach((d, k) => d.classList.toggle("on", k === i));
+      ov.querySelector("[data-next]").textContent = t(i === steps.length - 1 ? "tourDone" : "tourNext");
+      ov.querySelector("[data-skip]").textContent = t("tourSkip");
+      ov.querySelector("[data-skip]").style.visibility = i === steps.length - 1 ? "hidden" : "visible";
+    };
+    ov.querySelector("[data-skip]").addEventListener("click", close);
+    ov.querySelector("[data-next]").addEventListener("click", () => { buzz(8); if (i < steps.length - 1) { i++; show(); } else close(); });
+    show();
+    requestAnimationFrame(() => requestAnimationFrame(() => ov.classList.add("open")));
+  }
+
+  /* settings sheet: appearance, animation speed, haptics, airplane mode, default goal colour */
+  const settingsHtml = () => {
+    const seg = (name, opts, cur) => opts.map(([v, l]) => `<button class="btn small ${cur === v ? "primary" : ""}" type="button" data-${name}="${v}">${esc(l)}</button>`).join("");
+    const hap = hapticsOn(), air = store.get("pw_offline", false), dc = defColor();
+    return `
+      <h3 class="sheet-title">${esc(t("settingsTitle"))}</h3>
+      <label>${esc(t("appearance"))}</label>
+      <div class="btn-row">${seg("theme", [["dark", t("darkLbl")], ["light", t("lightLbl")]], theme)}</div>
+      <label>${esc(t("animSpeed"))}</label>
+      <div class="btn-row">${seg("anim", [["off", t("animOff")], ["normal", t("animNormal")], ["fast", t("animFast")]], animMode())}</div>
+      <label>${esc(t("hapticsRow"))}</label>
+      <div class="btn-row">${seg("hap", [["on", t("hapOn")], ["off", t("hapOff")]], hap ? "on" : "off")}</div>
+      <label>${esc(t("airplane"))} · <span class="muted">${esc(t("airplaneSub"))}</span></label>
+      <div class="btn-row">${seg("air", [["on", t("hapOn")], ["off", t("hapOff")]], air ? "on" : "off")}</div>
+      <label>${esc(t("waveDir"))}</label>
+      <div class="btn-row">${seg("wave", [["left", t("waveL")], ["right", t("waveR")]], store.get("pw_wavedir", "right"))}</div>
+      <label>${esc(t("tiltBtn"))}</label>
+      <div class="btn-row"><button class="btn small" id="tiltBtn" type="button">${esc(t("tiltBtn"))}</button></div>
+      <label>${esc(t("defColor"))}</label>
+      <div class="sw-row" id="defSw">${PALETTES.map((p, i) => `<button type="button" class="sw ${i === dc ? "sel" : ""}" data-dc="${i}" style="background:linear-gradient(135deg,${p[0]},${p[1]})"></button>`).join("")}</div>
+      <div class="btn-row"><button class="btn small" id="replayTour" type="button">${esc(t("replayTour"))}</button><button class="btn primary grow" id="setDone" type="button">${esc(t("done"))}</button></div>`;
+  };
+  const bindSettings = () => {
+    const sb = $("sheetBody");
+    sb.querySelectorAll("[data-theme]").forEach(b => b.addEventListener("click", () => { setTheme(b.dataset.theme); refreshSettings(); }));
+    sb.querySelectorAll("[data-anim]").forEach(b => b.addEventListener("click", () => { store.set("pw_anim", b.dataset.anim); applyAnim(b.dataset.anim); refreshSettings(); }));
+    sb.querySelectorAll("[data-hap]").forEach(b => b.addEventListener("click", () => { store.set("pw_haptics", b.dataset.hap === "on"); refreshSettings(); buzz(12); }));
+    sb.querySelectorAll("[data-air]").forEach(b => b.addEventListener("click", () => { store.set("pw_offline", b.dataset.air === "on"); refreshSettings(); if (b.dataset.air === "off") loadRates(false); }));
+    $("tiltBtn").addEventListener("click", () => enableTilt());
+    sb.querySelectorAll("[data-wave]").forEach(b => b.addEventListener("click", () => { store.set("pw_wavedir", b.dataset.wave); refreshSettings(); }));
+    sb.querySelectorAll("[data-dc]").forEach(b => b.addEventListener("click", () => { store.set("pw_defcolor", +b.dataset.dc); refreshSettings(); }));
+    $("setDone").addEventListener("click", closeSheet);
+    $("replayTour").addEventListener("click", () => { closeSheet(); setTimeout(() => startTour(true), 300); });
+  };
+  function refreshSettings() { $("sheetBody").innerHTML = settingsHtml(); bindSettings(); }
+  function openSettings() { openSheet(settingsHtml()); bindSettings(); }
+  $("settingsBtn").addEventListener("click", openSettings);
   $("langQuick").addEventListener("change", e => setLang(e.target.value));
   $("homeCur").addEventListener("change", e => { home = e.target.value; store.set("pw_home", home); renderOverview(); });
+  $("goalSearch").addEventListener("input", () => renderOverview());
   $("cAmt").addEventListener("input", renderConverter);
   $("cFrom").addEventListener("change", renderConverter);
   $("cTo").addEventListener("change", renderConverter);
@@ -1275,7 +1592,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("exportBtn").addEventListener("click", exportData);
   $("importBtn").addEventListener("click", () => $("importFile").click());
   $("importFile").addEventListener("change", e => { if (e.target.files[0]) importData(e.target.files[0]); e.target.value = ""; });
-  $("continueBtn").addEventListener("click", () => { setLang($("languageSelect").value); $("welcomeScreen").classList.remove("show"); });
+  $("continueBtn").addEventListener("click", () => { setLang($("languageSelect").value); $("welcomeScreen").classList.remove("show"); setTimeout(() => startTour(false), 350); });
   $("languageSelect").addEventListener("change", e => { lang = e.target.value; applyTranslations(); });
 
   setTheme(theme);
@@ -1487,6 +1804,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const g0 = activeGoal(); if (g0) $("saveCurrency").value = g0.currency;
   document.querySelectorAll("main .card, main .rate-pill").forEach((c, i) => { c.style.animationDelay = (i * 60) + "ms"; });
   render();
+  applyAnim(animMode());
+  if (lang) setTimeout(() => startTour(false), 700);
   loadRates(false);
 
   setInterval(() => loadRates(false), AUTO_REFRESH);
