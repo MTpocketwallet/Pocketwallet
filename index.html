@@ -1653,6 +1653,8 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="btn-row">${seg("air", [["on", t("hapOn")], ["off", t("hapOff")]], air ? "on" : "off")}</div>
       <label>Google Drive sync · <span class="muted">${esc(!gsync.configured() ? "Not set up yet" : gsync.signedIn() ? "Signed in, saved to your Drive" : "Not signed in")}</span></label>
       <div class="btn-row">${!gsync.configured() ? "" : gsync.signedIn() ? `<button class="btn small" type="button" data-gs="now">Sync now</button><button class="btn small" type="button" data-gs="out">Sign out</button>` : `<button class="btn small primary" type="button" data-gs="in">Sign in with Google</button>`}</div>
+      <label>Legal</label>
+      <div class="btn-row"><a class="btn small" href="https://mtpocketwallet.github.io/Pocketwallet/privacy.html" target="_blank" rel="noopener">Privacy policy</a><a class="btn small" href="https://mtpocketwallet.github.io/Pocketwallet/terms.html" target="_blank" rel="noopener">Terms of service</a></div>
       <label>${esc(t("waveDir"))}</label>
       <div class="btn-row">${seg("wave", [["left", t("waveL")], ["right", t("waveR")]], store.get("pw_wavedir", "right"))}</div>
       <label>${esc(t("defColor"))}</label>
