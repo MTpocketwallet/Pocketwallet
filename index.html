@@ -59,9 +59,10 @@
   /* the Google sign-in button: larger, red, and a short countdown before it opens */
   .gs-red { background: #d93025 !important; color: #fff !important; font-size: 18px; font-weight: 700; padding: 14px 22px; }
   .gs-red:disabled { opacity: .9; }
-  /* second loader: the cloud, shown while talking to Google Drive */
+  /* second loader: the cloud, shown while talking to the cloud database (and as the startup screen when signed in) */
   #cloudLoader { position: fixed; inset: 0; z-index: 85; background: rgba(6,7,13,.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
   #cloudLoader[hidden] { display: none; }
+  #cloudLoader.boot { background: #06070d; backdrop-filter: none; -webkit-backdrop-filter: none; z-index: 95; }
   #cloudLoader .gdrive-loader { --cloud-color: #7aa8ff; --arrows-color: #7cf59d; --time-animation: 1s; }
   #cloudLoader .gdrive-loader #cloud { width: 100px; height: 100px; }
   #cloudLoader .gdrive-text { color: #cfd8ff; font-size: 13px; letter-spacing: .14em; font-weight: 600; }
@@ -401,9 +402,6 @@
   .ring-card > .water { z-index: -1; }
   .liquid.static { transition: top 1.2s cubic-bezier(.2,.8,.2,1); }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-app-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-auth-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <div class="bg-orbit"><i></i><i></i><i></i></div>
@@ -737,7 +735,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let rates = { table: { ...FALLBACK }, updated: null, fetched: null, status: "offline", loading: false };
   let lastAdded = null;
 
-  let onSaved = () => {}; // set once the Drive sync below exists
+  let onSaved = () => {}; // set once the cloud sync below exists
   const save = () => { state.updated = Date.now(); store.set("pw_state", state); onSaved(); };
   let view = "home"; // always opens on the home page
   const activeGoal = () => state.goals.find(g => g.id === state.active) || null;
@@ -1649,50 +1647,115 @@ document.addEventListener("DOMContentLoaded", () => {
     appId: "1:301519769895:web:6292c91cf1d7d7c2451902"
   };
   const gsync = (() => {
-    let auth = null, db = null, user = null, timer = null;
-    const cloudBusy = on => { const el = $("cloudLoader"); if (el) el.hidden = !on; };
-    if (typeof firebase !== "undefined" && firebase.initializeApp) {
-      try {
-        firebase.initializeApp(FIREBASE_CONFIG);
-        auth = firebase.auth(); db = firebase.firestore();
-        // stay signed in across closing the browser; Firebase renews the session itself
-        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
-        auth.getRedirectResult().catch(() => toast("Sign-in didn't complete. Try again."));
-        auth.onAuthStateChanged(u => {
-          user = u;
-          if (u) { store.set("pw_gsync", true); pull().catch(() => {}); }
-        });
-      } catch (e) { auth = null; }
-    }
+    let auth = null, db = null, user = null, timer = null, busy = 0, hold = false, loadErr = "", status = "loading";
+    const spin = d => { busy = Math.max(0, busy + d); const el = $("cloudLoader"); if (el) el.hidden = busy === 0 && !hold; };
+    const setHold = on => { hold = on; const el = $("cloudLoader"); if (el) { el.hidden = busy === 0 && !hold; if (!on) el.classList.remove("boot"); } };
+    const errText = e => {
+      const c = (e && e.code) || "";
+      if (c === "auth/unauthorized-domain") return "Sign-in blocked: add this site under Firebase → Authentication → Settings → Authorised domains.";
+      if (c === "auth/operation-not-allowed") return "Google sign-in isn't switched on in Firebase.";
+      if (c === "permission-denied") return "The cloud database refused access. Check the Firestore rules.";
+      if (c === "auth/network-request-failed" || c === "unavailable") return "No connection. Try again when you're online.";
+      return "Cloud problem" + (c ? " (" + c + ")" : "") + ".";
+    };
+    // the Firebase library is loaded here (not in <head>) so one blocked address can't break the app; the second address is a fallback
+    const BASES = ["https://www.gstatic.com/firebasejs/10.14.1/", "https://cdn.jsdelivr.net/npm/firebase@10.14.1/"];
+    const FILES = [["firebase-app-compat.js", () => !!(window.firebase && firebase.initializeApp)], ["firebase-auth-compat.js", () => !!(window.firebase && firebase.auth)], ["firebase-firestore-compat.js", () => !!(window.firebase && firebase.firestore)]];
+    const loadScript = src => new Promise((res, rej) => {
+      const el = document.createElement("script"); el.src = src; el.async = false;
+      const tm = setTimeout(() => { el.remove(); rej(new Error("timeout")); }, 8000);
+      el.onload = () => { clearTimeout(tm); res(); };
+      el.onerror = () => { clearTimeout(tm); el.remove(); rej(new Error("load")); };
+      document.head.appendChild(el);
+    });
+    const loadSdk = async () => {
+      for (const base of BASES) {
+        try { for (const [f, have] of FILES) if (!have()) await loadScript(base + f); } catch (e) { continue; }
+        if (FILES.every(([, have]) => have())) return;
+      }
+      throw new Error("sdk");
+    };
+    const normState = st => {
+      st.goals = (Array.isArray(st.goals) ? st.goals : []).map(normGoal);
+      if (!st.goals.find(g => g.id === st.active)) st.active = st.goals[0] ? st.goals[0].id : null;
+      return st;
+    };
+    // first time this device meets an account: keep both sides' goals and entries instead of letting one overwrite the other
+    const mergeStates = (l, r) => {
+      const out = JSON.parse(JSON.stringify(r));
+      l.goals.forEach(g => {
+        const og = out.goals.find(x => x.id === g.id);
+        if (!og) out.goals.push(JSON.parse(JSON.stringify(g)));
+        else { og.entries = og.entries || []; const ids = new Set(og.entries.map(e => e.id)); (g.entries || []).forEach(e => { if (!ids.has(e.id)) og.entries.push(e); }); og.entries.sort((x, y) => x.date - y.date); }
+      });
+      return out;
+    };
+    const adopt = st => {
+      state = normState(st);
+      if (view === "goal" && !activeGoal()) view = "home";
+      store.set("pw_state", state); render();
+    };
     const pushInner = async () => {
       const payload = JSON.parse(JSON.stringify({ updated: state.updated || Date.now(), state }));
       await db.collection("users").doc(user.uid).set(payload);
     };
-    // newer copy wins: if the database is ahead, take it; if this device is ahead, upload it
+    // newer copy wins; on a brand-new link both copies are merged
     const pullInner = async () => {
       const snap = await db.collection("users").doc(user.uid).get();
       const remote = snap.exists ? snap.data() : null;
+      const rs = remote && remote.state && Array.isArray(remote.state.goals) ? remote.state : null;
       const remoteT = (remote && remote.updated) || 0, localT = state.updated || 0;
-      if (remote && remote.state && remoteT > localT) {
-        state = remote.state; state.updated = remoteT;
-        store.set("pw_state", state); render();
-      } else if (!remote || localT > remoteT) await pushInner();
+      const first = store.get("pw_uid", null) !== user.uid;
+      if (rs && first && state.goals.length) { const m = mergeStates(state, rs); m.updated = Date.now(); adopt(m); await pushInner(); }
+      else if (rs && remoteT > localT) { rs.updated = remoteT; adopt(rs); }
+      else if (state.goals.length && (!rs || localT > remoteT)) await pushInner();
+      store.set("pw_uid", user.uid);
     };
-    const run = async fn => { if (!user) return; cloudBusy(true); try { return await fn(); } finally { cloudBusy(false); } };
+    const run = async fn => { if (!user) return; spin(1); try { return await fn(); } finally { spin(-1); } };
     const pull = () => run(pullInner);
     const push = () => run(pushInner);
+    const refreshUi = () => { if ($("setDone") && $("sheet").classList.contains("open")) refreshSettings(); };
+    const ready = (async () => {
+      try { await loadSdk(); firebase.initializeApp(FIREBASE_CONFIG); auth = firebase.auth(); db = firebase.firestore(); }
+      catch (e) { auth = null; status = "failed"; loadErr = "Couldn't load the cloud sync library. Check your connection."; return; }
+      status = "ready";
+      try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch (e) {}
+      auth.getRedirectResult().catch(e => toast(errText(e)));
+      await new Promise(res => {
+        let first = true;
+        auth.onAuthStateChanged(u => {
+          user = u;
+          if (u) store.set("pw_gsync", true);
+          else if (first) store.set("pw_gsync", false);
+          if (first) { first = false; res(); } else if (u) pull().catch(e => toast(errText(e)));
+          refreshUi();
+        });
+      });
+      if (user) await pull().catch(e => toast(errText(e)));
+      refreshUi();
+    })();
     const queue = () => {
       if (!user || !store.get("pw_gsync", false)) return;
       clearTimeout(timer);
-      timer = setTimeout(() => push().catch(() => toast("Cloud sync failed. Check your connection.")), 1500);
+      timer = setTimeout(() => push().catch(e => toast(errText(e))), 1500);
     };
-    const signIn = () => {
-      if (!auth) return;
-      cloudBusy(true);
-      auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()).catch(() => { cloudBusy(false); toast("Sign-in failed."); });
+    const signIn = async () => {
+      if (!auth) { await ready; if (!auth) { toast(loadErr || "Cloud sync isn't available."); return false; } }
+      spin(1);
+      const prov = new firebase.auth.GoogleAuthProvider();
+      try { await auth.signInWithPopup(prov); return true; }
+      catch (e) {
+        let err = e;
+        if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")) {
+          try { await auth.signInWithRedirect(prov); return false; } catch (e2) { err = e2; }
+        }
+        const c = err && err.code;
+        if (c !== "auth/popup-closed-by-user" && c !== "auth/cancelled-popup-request") toast(errText(err));
+        return false;
+      } finally { spin(-1); }
     };
-    const signOut = () => { store.set("pw_gsync", false); clearTimeout(timer); if (auth) auth.signOut(); };
-    return { configured: () => !!auth, signedIn: () => !!user, signIn, signOut, pull, push, queue };
+    const signOut = () => { store.set("pw_gsync", false); clearTimeout(timer); user = null; if (auth) auth.signOut().catch(() => {}); };
+    return { configured: () => !!auth, status: () => status, signedIn: () => !!user, signIn, signOut, pull, push, queue, ready, setHold };
   })();
   onSaved = () => gsync.queue();
 
@@ -1710,8 +1773,8 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="btn-row">${seg("hap", [["on", t("hapOn")], ["off", t("hapOff")]], hap ? "on" : "off")}</div>
       <label>${esc(t("airplane"))} · <span class="muted">${esc(t("airplaneSub"))}</span></label>
       <div class="btn-row">${seg("air", [["on", t("hapOn")], ["off", t("hapOff")]], air ? "on" : "off")}</div>
-      <label>Cloud sync · <span class="muted">${esc(!gsync.configured() ? "Not set up yet" : gsync.signedIn() ? "Signed in, synced to your account" : "Not signed in")}</span></label>
-      <div class="btn-row">${!gsync.configured() ? "" : gsync.signedIn() ? `<button class="btn small" type="button" data-gs="now">Sync now</button><button class="btn small" type="button" data-gs="out">Sign out</button>` : `<button class="btn small primary" type="button" data-gs="in">Sign in with Google</button>`}</div>
+      <label>Cloud sync · <span class="muted">${esc(gsync.status() === "loading" ? "Connecting…" : !gsync.configured() ? "Unavailable right now" : gsync.signedIn() ? "Signed in, synced to your account" : "Not signed in")}</span></label>
+      <div class="btn-row">${gsync.status() === "loading" ? "" : !gsync.configured() ? `<button class="btn small" type="button" data-gs="in">Try again</button>` : gsync.signedIn() ? `<button class="btn small" type="button" data-gs="now">Sync now</button><button class="btn small" type="button" data-gs="out">Sign out</button>` : `<button class="btn small primary" type="button" data-gs="in">Sign in with Google</button>`}</div>
       <label>Legal</label>
       <div class="btn-row"><a class="btn small" href="https://mtpocketwallet.github.io/Pocketwallet/privacy.html" target="_blank" rel="noopener">Privacy policy</a><a class="btn small" href="https://mtpocketwallet.github.io/Pocketwallet/terms.html" target="_blank" rel="noopener">Terms of service</a></div>
       <label>${esc(t("waveDir"))}</label>
@@ -1741,11 +1804,11 @@ document.addEventListener("DOMContentLoaded", () => {
           if (n > 0) go.textContent = `I understand, continue (${n})`;
           else { clearInterval(tm); go.disabled = false; go.textContent = "I understand, continue"; }
         }, 1000);
-        go.addEventListener("click", () => { if (!go.disabled) gsync.signIn(); });
+        go.addEventListener("click", () => { if (go.disabled) return; gsync.signIn().then(ok => { if (ok) { toast("Signed in. Your goals are syncing."); openSettings(); } }); });
       };
       if (a === "in") showDisclaimer();
       else if (a === "out") { gsync.signOut(); toast("Signed out of Google sync"); refreshSettings(); }
-      else if (a === "now") { gsync.pull().then(() => { toast("Synced"); refreshSettings(); }).catch(() => toast("Sync failed. Try signing in again.")); }
+      else if (a === "now") { gsync.pull().then(() => { toast("Synced"); refreshSettings(); }).catch(() => toast("Sync failed. Check your connection and try again.")); }
     }));
     $("setDone").addEventListener("click", closeSheet);
     $("replayTour").addEventListener("click", () => { closeSheet(); setTimeout(() => startTour(true), 300); });
@@ -1977,7 +2040,6 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("main .card, main .rate-pill").forEach((c, i) => { c.style.animationDelay = (i * 60) + "ms"; });
   render();
   applyAnim(animMode());
-  if (lang) setTimeout(() => startTour(false), 700);
   loadRates(false);
 
   setInterval(() => loadRates(false), AUTO_REFRESH);
@@ -1985,19 +2047,36 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("visibilitychange", () => { if (!document.hidden && (!rates.fetched || Date.now() - rates.fetched > 60000)) loadRates(false); });
   window.addEventListener("online", () => loadRates(false));
 
-  /* the waves fill the screen over 3–4 seconds (a different length each launch), then the app fades in */
-  const fillMs = document.documentElement.classList.contains("anim-off") ? 0 : 3000 + Math.random() * 1000;
-  const lq = $("fillWave").querySelector(".liquid");
-  // the level rises in uneven stages: a quick rush, a long slow crawl, another rush, then it settles
-  if (fillMs) lq.animate([
-    { top: "100%", offset: 0 }, { top: "45%", offset: 0.2 }, { top: "40%", offset: 0.55 }, { top: "10%", offset: 0.75, easing: "cubic-bezier(.3,.6,.35,1)" }, { top: "0%", offset: 1 }
-  ], { duration: fillMs, fill: "forwards" });
-  else lq.style.top = "0%";
-  setTimeout(() => {
-    $("loadingScreen").classList.add("fade");
-    setTimeout(() => $("loadingScreen").remove(), 700);
+  /* startup screen. Signed in: the cloud shows on every open until the first sync settles (at least 3 s, at most 9 s).
+     Not signed in: the waves fill the screen over 3–4 seconds (a different length each launch). Then the app fades in. */
+  const afterLoader = () => {
     if (!lang) $("welcomeScreen").classList.add("show");
-  }, fillMs);
+    else setTimeout(() => startTour(false), 500);
+  };
+  if (store.get("pw_gsync", false)) {
+    $("loadingScreen").remove();
+    const cl = $("cloudLoader"); cl.classList.add("boot"); gsync.setHold(true);
+    const minMs = document.documentElement.classList.contains("anim-off") ? 600 : 3000;
+    const cap = new Promise(r => setTimeout(r, 9000));
+    const settled = Promise.race([gsync.ready.catch(() => {}), cap]);
+    Promise.all([new Promise(r => setTimeout(r, minMs)), settled]).then(() => {
+      cl.style.transition = "opacity .5s ease-out"; cl.style.opacity = "0";
+      setTimeout(() => { gsync.setHold(false); cl.style.opacity = ""; cl.style.transition = ""; afterLoader(); }, 500);
+    });
+  } else {
+    const fillMs = document.documentElement.classList.contains("anim-off") ? 0 : 3000 + Math.random() * 1000;
+    const lq = $("fillWave").querySelector(".liquid");
+    // the level rises in uneven stages: a quick rush, a long slow crawl, another rush, then it settles
+    if (fillMs) lq.animate([
+      { top: "100%", offset: 0 }, { top: "45%", offset: 0.2 }, { top: "40%", offset: 0.55 }, { top: "10%", offset: 0.75, easing: "cubic-bezier(.3,.6,.35,1)" }, { top: "0%", offset: 1 }
+    ], { duration: fillMs, fill: "forwards" });
+    else lq.style.top = "0%";
+    setTimeout(() => {
+      $("loadingScreen").classList.add("fade");
+      setTimeout(() => $("loadingScreen").remove(), 700);
+      afterLoader();
+    }, fillMs);
+  }
 });
 </script>
 </body>
