@@ -401,6 +401,9 @@
   .ring-card > .water { z-index: -1; }
   .liquid.static { transition: top 1.2s cubic-bezier(.2,.8,.2,1); }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-app-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <div class="bg-orbit"><i></i><i></i><i></i></div>
@@ -436,7 +439,7 @@
       <path d="M33.52,68.12 C35.02,62.8 39.03,58.52 44.24,56.69 C49.26,54.93 54.68,55.61 59.04,58.4 C59.04,58.4 56.24,60.53 56.24,60.53 C55.45,61.13 55.68,62.37 56.63,62.64 C56.63,62.64 67.21,65.66 67.21,65.66 C67.98,65.88 68.75,65.3 68.74,64.5 C68.74,64.5 68.68,53.5 68.68,53.5 C68.67,52.51 67.54,51.95 66.75,52.55 C66.75,52.55 64.04,54.61 64.04,54.61 C57.88,49.79 49.73,48.4 42.25,51.03 C35.2,53.51 29.78,59.29 27.74,66.49 C27.29,68.08 28.22,69.74 29.81,70.19 C30.09,70.27 30.36,70.31 30.63,70.31 C31.94,70.31 33.14,69.44 33.52,68.12Z"></path>
       <path d="M69.95,74.85 C68.35,74.4 66.7,75.32 66.25,76.92 C64.74,82.24 60.73,86.51 55.52,88.35 C50.51,90.11 45.09,89.43 40.73,86.63 C40.73,86.63 43.53,84.51 43.53,84.51 C44.31,83.91 44.08,82.67 43.13,82.4 C43.13,82.4 32.55,79.38 32.55,79.38 C31.78,79.16 31.02,79.74 31.02,80.54 C31.02,80.54 31.09,91.54 31.09,91.54 C31.09,92.53 32.22,93.09 33.01,92.49 C33.01,92.49 35.72,90.43 35.72,90.43 C39.81,93.63 44.77,95.32 49.84,95.32 C52.41,95.32 55,94.89 57.51,94.01 C64.56,91.53 69.99,85.75 72.02,78.55 C72.47,76.95 71.54,75.3 69.95,74.85Z"></path>
     </g>
-  </svg></div><div class="gdrive-text">Syncing with Google Drive…</div></div>
+  </svg></div><div class="gdrive-text">Syncing with your account…</div></div>
   <div id="loadingScreen" style="--g1:#2f6fd1;--g2:#1e9a78"><div class="fill-wave" id="fillWave"><div class="liquid"></div></div><div class="loader"><div class="loader-word">POCKET WALLET</div></div></div>
 
   <div id="welcomeScreen">
@@ -1635,79 +1638,63 @@ document.addEventListener("DOMContentLoaded", () => {
     requestAnimationFrame(() => requestAnimationFrame(() => ov.classList.add("open")));
   }
 
-  /* ---------- Google Drive sync ----------
-     Goals are saved to a private app folder in the signed-in user's Drive. Only this app can read that folder. */
-  const GDRIVE_CLIENT_ID = "345576290993-j2km61oab8952ukf255kkeqk4gvp21mi.apps.googleusercontent.com"; // from Google Cloud Console (see the setup notes)
-  const GDRIVE_FILE = "pocketwallet-data.json";
+  /* ---------- cloud sync (Firebase: Google sign-in + Firestore) ----------
+     Each signed-in Google account has its own record in the database. The developer can access that database. */
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyByX0xj4TWqPHpaYk7C1fgtBtSm-2WcaC4",
+    authDomain: "pocketwallet-d4b07.firebaseapp.com",
+    projectId: "pocketwallet-d4b07",
+    storageBucket: "pocketwallet-d4b07.firebasestorage.app",
+    messagingSenderId: "301519769895",
+    appId: "1:301519769895:web:6292c91cf1d7d7c2451902"
+  };
   const gsync = (() => {
-    const KEY = "pw_gtoken";
-    const configured = () => !GDRIVE_CLIENT_ID.startsWith("PASTE_");
-    const readTok = () => { try { const o = JSON.parse(sessionStorage.getItem(KEY) || "null"); return o && o.exp > Date.now() ? o.token : null; } catch (e) { return null; } };
-    const writeTok = (token, secs) => { try { sessionStorage.setItem(KEY, JSON.stringify({ token, exp: Date.now() + (secs - 60) * 1000 })); } catch (e) {} };
-    const clearTok = () => { try { sessionStorage.removeItem(KEY); } catch (e) {} };
-    // the sign-in redirect brings the token back in the address; keep it, then tidy the address bar
-    (() => {
-      const h = new URLSearchParams(location.hash.slice(1));
-      if (h.get("access_token")) { writeTok(h.get("access_token"), +h.get("expires_in") || 3600); store.set("pw_gsync", true); history.replaceState(null, "", location.pathname + location.search); }
-    })();
-    const api = async (method, url, body, type) => {
-      const tok = readTok(); if (!tok) throw new Error("signed out");
-      const headers = { Authorization: "Bearer " + tok };
-      if (type) headers["Content-Type"] = type;
-      const r = await fetch(url, { method, headers, body });
-      if (r.status === 401) { clearTok(); throw new Error("expired"); }
-      if (!r.ok) throw new Error("http " + r.status);
-      return r;
-    };
-    let fileId = null, timer = null;
-    const find = async () => {
-      if (fileId) return fileId;
-      const q = encodeURIComponent("name='" + GDRIVE_FILE + "'");
-      const j = await (await api("GET", `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id)`)).json();
-      fileId = j.files && j.files[0] ? j.files[0].id : null;
-      return fileId;
-    };
-    const push = async () => {
-      const payload = JSON.stringify({ updated: state.updated || Date.now(), state });
-      const id = await find();
-      if (id) { await api("PATCH", `https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`, payload, "application/json"); return; }
-      const boundary = "pwsync" + Date.now();
-      const meta = JSON.stringify({ name: GDRIVE_FILE, parents: ["appDataFolder"] });
-      const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${payload}\r\n--${boundary}--`;
-      const j = await (await api("POST", "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", body, `multipart/related; boundary=${boundary}`)).json();
-      fileId = j.id;
-    };
-    // newer copy wins: if Drive is ahead, take it; if this device is ahead, upload it
+    let auth = null, db = null, user = null, timer = null;
     const cloudBusy = on => { const el = $("cloudLoader"); if (el) el.hidden = !on; };
+    if (typeof firebase !== "undefined" && firebase.initializeApp) {
+      try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        auth = firebase.auth(); db = firebase.firestore();
+        // stay signed in across closing the browser; Firebase renews the session itself
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+        auth.getRedirectResult().catch(() => toast("Sign-in didn't complete. Try again."));
+        auth.onAuthStateChanged(u => {
+          user = u;
+          if (u) { store.set("pw_gsync", true); pull().catch(() => {}); }
+        });
+      } catch (e) { auth = null; }
+    }
+    const pushInner = async () => {
+      const payload = JSON.parse(JSON.stringify({ updated: state.updated || Date.now(), state }));
+      await db.collection("users").doc(user.uid).set(payload);
+    };
+    // newer copy wins: if the database is ahead, take it; if this device is ahead, upload it
     const pullInner = async () => {
-      const id = await find();
-      if (!id) return push();
-      const remote = await (await api("GET", `https://www.googleapis.com/drive/v3/files/${id}?alt=media`)).json();
+      const snap = await db.collection("users").doc(user.uid).get();
+      const remote = snap.exists ? snap.data() : null;
       const remoteT = (remote && remote.updated) || 0, localT = state.updated || 0;
       if (remote && remote.state && remoteT > localT) {
         state = remote.state; state.updated = remoteT;
         store.set("pw_state", state); render();
-      } else if (localT > remoteT) await push();
+      } else if (!remote || localT > remoteT) await pushInner();
     };
-    const pull = async () => { cloudBusy(true); try { return await pullInner(); } finally { cloudBusy(false); } };
+    const run = async fn => { if (!user) return; cloudBusy(true); try { return await fn(); } finally { cloudBusy(false); } };
+    const pull = () => run(pullInner);
+    const push = () => run(pushInner);
     const queue = () => {
-      if (!store.get("pw_gsync", false) || !readTok()) return;
+      if (!user || !store.get("pw_gsync", false)) return;
       clearTimeout(timer);
-      timer = setTimeout(() => push().catch(() => toast("Google sync failed. Sign in again if this keeps happening.")), 1500);
+      timer = setTimeout(() => push().catch(() => toast("Cloud sync failed. Check your connection.")), 1500);
     };
     const signIn = () => {
+      if (!auth) return;
       cloudBusy(true);
-      location.href = "https://accounts.google.com/o/oauth2/v2/auth?" + new URLSearchParams({
-        client_id: GDRIVE_CLIENT_ID, redirect_uri: location.origin + location.pathname,
-        response_type: "token", scope: "https://www.googleapis.com/auth/drive.appdata", prompt: "select_account"
-      }).toString();
+      auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()).catch(() => { cloudBusy(false); toast("Sign-in failed."); });
     };
-    const signOut = () => { clearTok(); store.set("pw_gsync", false); clearTimeout(timer); fileId = null; };
-    const signedIn = () => !!readTok();
-    return { configured, signedIn, signIn, signOut, pull, push, queue };
+    const signOut = () => { store.set("pw_gsync", false); clearTimeout(timer); if (auth) auth.signOut(); };
+    return { configured: () => !!auth, signedIn: () => !!user, signIn, signOut, pull, push, queue };
   })();
   onSaved = () => gsync.queue();
-  if (gsync.configured() && gsync.signedIn() && store.get("pw_gsync", false)) gsync.pull().catch(() => {});
 
   /* settings sheet: appearance, animation speed, haptics, airplane mode, default goal colour */
   const settingsHtml = () => {
@@ -1723,7 +1710,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="btn-row">${seg("hap", [["on", t("hapOn")], ["off", t("hapOff")]], hap ? "on" : "off")}</div>
       <label>${esc(t("airplane"))} · <span class="muted">${esc(t("airplaneSub"))}</span></label>
       <div class="btn-row">${seg("air", [["on", t("hapOn")], ["off", t("hapOff")]], air ? "on" : "off")}</div>
-      <label>Google Drive sync · <span class="muted">${esc(!gsync.configured() ? "Not set up yet" : gsync.signedIn() ? "Signed in, saved to your Drive" : "Not signed in")}</span></label>
+      <label>Cloud sync · <span class="muted">${esc(!gsync.configured() ? "Not set up yet" : gsync.signedIn() ? "Signed in, synced to your account" : "Not signed in")}</span></label>
       <div class="btn-row">${!gsync.configured() ? "" : gsync.signedIn() ? `<button class="btn small" type="button" data-gs="now">Sync now</button><button class="btn small" type="button" data-gs="out">Sign out</button>` : `<button class="btn small primary" type="button" data-gs="in">Sign in with Google</button>`}</div>
       <label>Legal</label>
       <div class="btn-row"><a class="btn small" href="https://mtpocketwallet.github.io/Pocketwallet/privacy.html" target="_blank" rel="noopener">Privacy policy</a><a class="btn small" href="https://mtpocketwallet.github.io/Pocketwallet/terms.html" target="_blank" rel="noopener">Terms of service</a></div>
@@ -1744,8 +1731,8 @@ document.addEventListener("DOMContentLoaded", () => {
     sb.querySelectorAll("[data-gs]").forEach(b => b.addEventListener("click", () => {
       const a = b.dataset.gs;
       const showDisclaimer = () => {
-        openSheet(`<h3 class="sheet-title">Sync with Google Drive</h3>
-          <p class="muted">Your goals, entries and notes will be saved to a private app folder in your own Google Drive, so they follow you to other devices. Only Pocket Wallet can read that folder. The developer of this app cannot see your data, but Google stores and processes it under its own terms, and the app does not add extra encryption. Revoke access in your Google Account at any time to stop the app reading it. Signing out stops syncing. Pocket Wallet is a personal project, provided as is, without warranty.</p>
+        openSheet(`<h3 class="sheet-title">Sync with Google</h3>
+          <p class="muted">Your goals, entries and notes will be saved to a database run by the developer of this app (Google Firebase), linked to your Google account, so they follow you to other devices. The developer can access this database, and Google stores it under its own terms. The app does not add extra encryption. Don't store anything you wouldn't want the developer to see. Signing out stops syncing. Pocket Wallet is a personal project, provided as is, without warranty.</p>
           <div class="btn-row"><button class="btn small" id="gsBack" type="button">Back</button><button class="btn primary grow gs-red" id="gsGo" type="button" disabled>I understand, continue (5)</button></div>`);
         $("gsBack").addEventListener("click", openSettings);
         const go = $("gsGo"); let n = 5;
